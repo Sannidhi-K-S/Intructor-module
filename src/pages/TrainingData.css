@@ -1,0 +1,143 @@
+.training-container {
+  width: 100%;
+}
+
+/* HEADER */
+
+.training-header {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 1.5rem;
+}
+
+.training-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.training-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.highlight {
+  color: #2563eb;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.exercise-item {
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.exercise-item.active {
+  background: #0f172a;
+  color: white;
+}
+
+/* MAIN */
+
+.main-card {
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+}
+
+.exercise-title {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+/* SCORE */
+
+.score-section {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.score-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+/* CANVAS */
+
+.canvas-container {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  min-height: 60vh;
+}
+
+.canvas-element {
+  position: absolute;
+  width: 100%;
+  top: 0;
+  left: 0;
+}
+
+.notes-editor {
+  padding: 1rem;
+}
+
+/* TOOL */
+
+.tool-wrapper {
+  position: fixed;
+  right: 2rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.tool-main {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  background: #0f172a;
+  color: white;
+}
+
+.tool-panel {
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 10px;
+  padding: 0.5rem;
+}
+
+.tool-item {
+  display: block;
+  padding: 0.4rem;
+}
+
+.tool-item.active {
+  background: #0f172a;
+  color: white;
+}
+
+/* NAV */
+
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+
+
+
+
+

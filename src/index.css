@@ -1,0 +1,70 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased bg-slate-50 text-slate-800 font-sans text-sm selection:bg-primary-100 selection:text-primary-900;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-outfit text-slate-900 tracking-tight;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white border border-slate-200 shadow-sm rounded-xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply shadow-md border-slate-300 -translate-y-0.5;
+  }
+
+  .nav-link {
+    @apply flex items-center gap-2.5 px-3 py-2 text-[14px] font-medium text-slate-500 rounded-lg transition-all duration-200 hover:bg-slate-100 hover:text-slate-900;
+  }
+
+  .nav-link-active {
+    @apply text-primary-600 bg-white shadow-sm ring-1 ring-slate-200/50;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 text-[13px] font-semibold transition-all duration-200 rounded-lg active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply bg-slate-900 text-white hover:bg-slate-800 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none transition-all duration-200 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/5 text-sm;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300;
+  }
+
+  /* Tablet specific adjustments */
+  @media (min-width: 768px) and (max-width: 1024px) {
+    .container {
+      @apply px-4;
+    }
+  }
+}
+
+:root {
+  --primary: 15, 23, 42; /* Slate 900 */
+}
