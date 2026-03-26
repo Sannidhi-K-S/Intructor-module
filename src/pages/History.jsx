@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import useAppStore from '../store/useAppStore';
 import { jsPDF } from 'jspdf';
 import {
@@ -13,15 +13,15 @@ import {
     HiOutlineChatBubbleBottomCenterText,
     HiOutlineCalendar,
     HiOutlineListBullet,
-    HiOutlineFunnel
+    HiOutlineFunnel,
+    HiOutlineMagnifyingGlass
 } from 'react-icons/hi2';
 
 const DebriefSummary = ({ session, onClose }) => {
-    const averageScore = session.lessonPlan.exercises.length > 0 
-        ? session.lessonPlan.exercises.reduce((acc, ex) => acc + (ex.score || 0), 0) / session.lessonPlan.exercises.length 
+    const exercises = session.lessonPlan?.exercises || [];
+    const averageScore = exercises.length > 0
+        ? exercises.reduce((acc, ex) => acc + (ex.score || 0), 0) / exercises.length
         : 0;
-
-
 
     const downloadPDF = () => {
         const doc = new jsPDF();
@@ -30,7 +30,7 @@ const DebriefSummary = ({ session, onClose }) => {
 
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Mission ID: ${session.id} | Date: ${session.date ? new Date(session.date).toLocaleDateString() : 'Unknown Date'}`, 20, 30);
+        doc.text(`Date: ${session.date ? new Date(session.date).toLocaleDateString() : 'Unknown Date'}`, 20, 30);
 
         doc.setDrawColor(200);
         doc.line(20, 35, 190, 35);
@@ -50,7 +50,7 @@ const DebriefSummary = ({ session, onClose }) => {
         doc.text("Detailed Exercise Grading", 20, 105);
 
         let y = 115;
-        session.lessonPlan.exercises.forEach((ex, i) => {
+        exercises.forEach((ex, i) => {
             if (y > 250) { doc.addPage(); y = 20; }
             doc.setFontSize(11);
             doc.text(`${i + 1}. ${ex.name} (${ex.type})`, 25, y);
@@ -90,7 +90,7 @@ const DebriefSummary = ({ session, onClose }) => {
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-slate-900 leading-tight">Training Report</h2>
-                            <p className="text-[12px] text-slate-500 font-medium">{session.id} · {session.trainee}</p>
+                            <p className="text-[12px] text-slate-500 font-medium">{session.trainee}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg">
@@ -99,7 +99,6 @@ const DebriefSummary = ({ session, onClose }) => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-8">
-                    {/* Mission Header Card */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Performance</p>
@@ -120,7 +119,6 @@ const DebriefSummary = ({ session, onClose }) => {
                     </div>
 
                     <div className="space-y-12">
-                        {/* Instructor Debrief Section */}
                         <section>
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3 mb-6 flex items-center gap-2">
                                 <HiOutlineChatBubbleBottomCenterText className="w-4 h-4" /> Instructor Debrief Summary
@@ -139,17 +137,16 @@ const DebriefSummary = ({ session, onClose }) => {
                             </div>
                         </section>
 
-                        {/* Detailed Grades Section */}
                         <section>
                             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3 mb-6">Exercise Evaluation Data</h3>
                             <div className="space-y-4">
-                                {session.lessonPlan.exercises.map((ex, i) => (
-                                    <div key={ex.id} className="p-5 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+                                {exercises.map((ex, i) => (
+                                    <div key={ex.id || i} className="p-5 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="text-[9px] font-bold text-slate-400 uppercase bg-slate-100 px-1.5 py-0.5 rounded">EX {i + 1}</span>
-                                                    <span className="text-[9px] font-bold text-primary-600 uppercase tracking-wider">{ex.type}</span>
+                                                    <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider">{ex.type}</span>
                                                 </div>
                                                 <h4 className="text-[15px] font-bold text-slate-900 leading-tight">{ex.name}</h4>
                                             </div>
@@ -173,8 +170,8 @@ const DebriefSummary = ({ session, onClose }) => {
                 </div>
 
                 <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
-                    <button onClick={onClose} className="btn bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-6">Close Archive</button>
-                    <button onClick={downloadPDF} className="btn btn-primary px-8 gap-2">
+                    <button onClick={onClose} className="px-6 py-2 bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg font-bold text-sm">Close Report</button>
+                    <button onClick={downloadPDF} className="px-6 py-2 bg-slate-900 text-white rounded-lg flex items-center gap-2 font-bold text-sm shadow-sm hover:bg-slate-800 transition">
                         <HiOutlineArrowDownTray className="w-4 h-4" /> Download Records (PDF)
                     </button>
                 </div>
@@ -186,15 +183,18 @@ const DebriefSummary = ({ session, onClose }) => {
 const History = () => {
     const { historySessions, loadHistory } = useAppStore();
     const [selectedSession, setSelectedSession] = useState(null);
-    const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+    const [viewMode, setViewMode] = useState('list');
     const [typeFilter, setTypeFilter] = useState('All');
     const [timeFilter, setTimeFilter] = useState('Last 1 Month');
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Calendar state
     const [currentDate, setCurrentDate] = useState(new Date());
     const [noDataPopup, setNoDataPopup] = useState(false);
     const [daySessionsPopup, setDaySessionsPopup] = useState(null);
     const [popupDateStr, setPopupDateStr] = useState("");
+
+    // Tooltip state
+    const [hoveredDay, setHoveredDay] = useState(null);
 
     React.useEffect(() => {
         loadHistory();
@@ -215,12 +215,19 @@ const History = () => {
     const types = ['All', 'Flight', 'Simulator', 'Class'];
     const times = ['All Time', 'Last 3 Days', 'Last 1 Week', 'Last 1 Month'];
 
-    const getFilteredSessions = () => {
+    const filteredSessions = useMemo(() => {
         const now = new Date();
         return (historySessions || []).filter(session => {
-            // Type Filter
-            if (typeFilter !== 'All' && !session.type.includes(typeFilter)) return false;
+            // Search Query Filter (Trainee or Topic)
+            if (searchQuery) {
+                const searchLower = searchQuery.toLowerCase();
+                const matchTrainee = session.trainee?.toLowerCase().includes(searchLower);
+                const matchTopic = session.topic?.toLowerCase().includes(searchLower);
+                if (!matchTrainee && !matchTopic) return false;
+            }
 
+            // Type Filter
+            if (typeFilter !== 'All' && !session.type?.includes(typeFilter)) return false;
 
             // Time Filter
             if (timeFilter !== 'All Time' && session.date) {
@@ -232,9 +239,7 @@ const History = () => {
             }
             return true;
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
-    };
-
-    const filteredSessions = getFilteredSessions();
+    }, [historySessions, typeFilter, timeFilter, searchQuery]);
 
     const renderCalendar = () => {
         const year = currentDate.getFullYear();
@@ -255,35 +260,47 @@ const History = () => {
 
         let days = [];
         for (let i = 0; i < startDay; i++) {
-            days.push(<div key={`empty-${i}`} className="p-2 border border-slate-100 bg-slate-50/30"></div>);
+            days.push(<div key={`empty-${i}`} className="p-2 border border-slate-100 bg-slate-50/10"></div>);
         }
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, month, d);
             const dateStr = dateObj.toLocaleDateString();
-
-            // Find sessions for this day
-            const daySessions = filteredSessions.filter(s => {
-                if (!s.date) return false;
-                return new Date(s.date).toLocaleDateString() === dateStr;
-            });
+            const daySessions = filteredSessions.filter(s => s.date && new Date(s.date).toLocaleDateString() === dateStr);
 
             days.push(
                 <div
                     key={d}
                     onClick={() => handleDateClick(daySessions, dateStr)}
-                    className="p-2 border border-slate-200 min-h-[100px] bg-white transition-colors hover:bg-slate-50 group flex flex-col cursor-pointer"
+                    onMouseEnter={() => setHoveredDay({ d, sessions: daySessions })}
+                    onMouseLeave={() => setHoveredDay(null)}
+                    className="p-2 border border-slate-200 min-h-[110px] bg-white transition-all hover:bg-slate-50 group flex flex-col cursor-pointer relative"
                 >
                     <span className="text-[12px] font-bold text-slate-400 group-hover:text-slate-900 mb-2">{d}</span>
-                    <div className="flex-1 flex flex-wrap gap-1.5 content-start overflow-y-auto">
+
+                    {/* Tooltip implementation */}
+                    {hoveredDay?.d === d && daySessions.length > 0 && (
+                        <div className="absolute top-10 left-10 z-[50] w-64 bg-slate-900 text-white rounded-xl p-4 shadow-2xl animate-in fade-in zoom-in duration-200 pointer-events-none">
+                            <p className="text-[10px] uppercase font-black tracking-widest text-blue-400 mb-3 border-b border-slate-800 pb-2">{dateStr}</p>
+                            <div className="space-y-3">
+                                {daySessions.map(s => (
+                                    <div key={s.id} className="border-l-2 border-slate-700 pl-3">
+                                        <p className="text-[11px] font-bold leading-tight mb-1 truncate">{s.topic}</p>
+                                        <p className="text-[9px] text-slate-400 font-medium">Trainee: {s.trainee}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex-1 flex flex-wrap gap-1.5 content-start overflow-hidden">
                         {daySessions.map(s => (
                             <div
                                 key={s.id}
-                                className={`w-3 h-3 rounded-full border border-white shadow-sm ${s.type.includes('Flight') ? 'bg-blue-400' :
-                                    s.type.includes('Simulator') ? 'bg-purple-400' :
+                                className={`w-3 h-3 rounded-full border border-white shadow-sm ${s.type?.includes('Flight') ? 'bg-blue-400' :
+                                    s.type?.includes('Simulator') ? 'bg-purple-400' :
                                         'bg-amber-400'
                                     }`}
-                                title={`${s.topic} (${s.type})`}
                             />
                         ))}
                     </div>
@@ -292,54 +309,39 @@ const History = () => {
         }
 
         return (
-            <div className="glass-card p-6 overflow-hidden border border-slate-200 animate-in fade-in duration-300">
+            <div className="glass-card p-6 border border-slate-200 animate-in fade-in duration-300">
                 <div className="mb-6 flex justify-between items-center flex-wrap gap-4">
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                            {/* Month Select */}
                             <select
                                 value={month}
                                 onChange={(e) => setCurrentDate(new Date(year, parseInt(e.target.value), 1))}
-                                className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 rounded-lg px-3 py-1.5 outline-none"
+                                className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 rounded-lg px-3 py-1.5 outline-none hover:border-slate-300"
                             >
                                 {months.map((m, i) => (
                                     <option key={m} value={i}>{m}</option>
                                 ))}
                             </select>
-
-                            {/* Year Select */}
                             <select
                                 value={year}
                                 onChange={(e) => setCurrentDate(new Date(parseInt(e.target.value), month, 1))}
-                                className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 rounded-lg px-3 py-1.5 outline-none"
+                                className="bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 rounded-lg px-3 py-1.5 outline-none hover:border-slate-300"
                             >
                                 {years.map(y => (
                                     <option key={y} value={y}>{y}</option>
                                 ))}
                             </select>
                         </div>
-
                         <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-lg border border-slate-200">
-                            <button onClick={prevMonth} className="px-2 py-1 flex items-center justify-center rounded text-slate-500 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200 shadow-sm transition-all">&larr;</button>
-                            <button onClick={() => setCurrentDate(new Date())} className="text-[11px] font-bold uppercase tracking-widest px-3 py-1 text-slate-500 hover:text-slate-900">Today</button>
-                            <button onClick={nextMonth} className="px-2 py-1 flex items-center justify-center rounded text-slate-500 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200 shadow-sm transition-all">&rarr;</button>
-                        </div>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                            <span className="w-2.5 h-2.5 rounded-full bg-blue-400"></span> Flight
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                            <span className="w-2.5 h-2.5 rounded-full bg-purple-400"></span> Simulator
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Class
+                            <button onClick={prevMonth} className="px-3 py-1 text-slate-500 hover:text-slate-900 font-black">&larr;</button>
+                            <button onClick={() => setCurrentDate(new Date())} className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 text-slate-500 hover:text-slate-900">Today</button>
+                            <button onClick={nextMonth} className="px-3 py-1 text-slate-500 hover:text-slate-900 font-black">&rarr;</button>
                         </div>
                     </div>
                 </div>
-                <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden">
+                <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                        <div key={day} className="bg-slate-100 p-2 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                        <div key={day} className="bg-slate-100 p-3 text-[11px] font-black text-slate-500 uppercase tracking-widest text-center">
                             {day}
                         </div>
                     ))}
@@ -351,13 +353,13 @@ const History = () => {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-slate-200 pb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Session History</h1>
-                </div>
+            {/* SEARCH & FILTERS HEADER */}
+            <div className="flex flex-col gap-6">
+                <div className="flex justify-between items-center">
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-3">
+                        <HiOutlineCalendar className="text-blue-600" /> Session History
+                    </h1>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    {/* View Toggle */}
                     <div className="flex items-center p-1 bg-slate-100/50 rounded-lg border border-slate-200">
                         <button
                             onClick={() => setViewMode('list')}
@@ -372,17 +374,28 @@ const History = () => {
                             <HiOutlineCalendar className="w-4 h-4" />
                         </button>
                     </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    {/* Search Bar */}
+                    <div className="relative flex-1 min-w-[300px]">
+                        <HiOutlineMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by trainee name or session topic..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                        />
+                    </div>
 
                     {/* Type Filter */}
-                    <div className="flex bg-slate-100/50 rounded-lg border border-slate-200 p-1 w-full sm:w-auto overflow-x-auto hide-scrollbar">
+                    <div className="flex bg-slate-100/50 rounded-lg border border-slate-200 p-1">
                         {types.map(type => (
                             <button
                                 key={type}
                                 onClick={() => setTypeFilter(type)}
-                                className={`px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider whitespace-nowrap ${typeFilter === type
-                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                                    : 'text-slate-400 hover:text-slate-600'
-                                    }`}
+                                className={`px-4 py-1.5 text-[11px] font-bold rounded-md transition-all uppercase tracking-wider ${typeFilter === type ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
                             >
                                 {type}
                             </button>
@@ -390,86 +403,74 @@ const History = () => {
                     </div>
 
                     {/* Time Filter */}
-                    <div className="relative flex items-center bg-slate-100/50 rounded-lg border border-slate-200 px-3 py-1.5 h-[34px] w-full sm:w-auto shrink-0">
-                        <HiOutlineFunnel className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+                    <div className="relative h-[38px] min-w-[160px]">
+                        <HiOutlineFunnel className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                         <select
                             value={timeFilter}
                             onChange={(e) => setTimeFilter(e.target.value)}
-                            className="bg-transparent text-[11px] font-bold uppercase tracking-wider text-slate-700 outline-none cursor-pointer appearance-none pr-6 w-full h-full"
+                            className="w-full h-full pl-10 pr-8 bg-slate-100/50 border border-slate-200 rounded-lg text-[11px] font-bold uppercase tracking-wider text-slate-700 outline-none cursor-pointer appearance-none"
                         >
-                            {times.map(time => (
-                                <option key={time} value={time}>{time}</option>
-                            ))}
+                            {times.map(time => <option key={time} value={time}>{time}</option>)}
                         </select>
-                        <div className="pointer-events-none absolute right-3">
-                            <svg className="h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
-                        </div>
                     </div>
                 </div>
             </div>
 
-            {viewMode === 'calendar' ? (
-                renderCalendar()
-            ) : (
+            {viewMode === 'calendar' ? renderCalendar() : (
                 <div className="glass-card overflow-hidden border border-slate-200 animate-in fade-in duration-300">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Date / Trainee</th>
-                                    <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Mission Topic</th>
-                                    <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Resource</th>
-                                    <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Performance</th>
-                                    <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trainee </th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Session Topic</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Performance</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Records</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {filteredSessions.map(session => (
                                     <tr key={session.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded bg-slate-900 flex items-center justify-center font-bold text-[12px] text-white shadow-sm">
-                                                    {session.trainee.split(' ').map(n => n[0]).join('')}
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center font-bold text-[12px] text-white shadow-sm">
+                                                    {session.trainee?.split(' ').map(n => n[0]).join('') || "U"}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[13px] font-bold text-slate-900 leading-tight">{session.trainee}</p>
-                                                    <p className="text-[11px] text-slate-400 font-medium">
-                                                        {session.date ? new Date(session.date).toLocaleDateString() : 'Unknown Date'}
-                                                    </p>
+                                                    <p className="text-[14px] font-bold text-slate-900 leading-tight">{session.trainee}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-4">
-                                            <p className="text-[13px] font-bold text-slate-700 leading-tight mb-1">{session.topic}</p>
-                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${session.type.includes('Flight') ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                session.type.includes('Simulator') ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                                    'bg-amber-50 text-amber-900 border-amber-200'
+                                        <td className="px-6 py-4">
+                                            <p className="text-[14px] font-bold text-slate-700 leading-tight mb-1">{session.topic}</p>
+                                            <div className="flex items-center gap-2">
+                                                <HiOutlineCalendar size={12} className="text-slate-300" />
+                                                <p className="text-[11px] text-slate-500 font-medium">{session.date ? new Date(session.date).toLocaleDateString() : 'N/A'}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${session.type?.includes('Flight') ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                session.type?.includes('Simulator') ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                                                    'bg-amber-50 text-amber-700 border-amber-100'
                                                 }`}>
                                                 {session.type}
                                             </span>
                                         </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-2 text-slate-600">
-                                                <HiOutlineMapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                <p className="text-[12px] font-medium">{session.resourceUsed || 'Not Recorded'}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-4">
-                                            <div className="flex items-center gap-2.5">
-                                                <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div className="h-full bg-emerald-500" style={{ width: '85%' }}></div>
                                                 </div>
-                                                <span className="text-[12px] font-bold text-slate-900">85%</span>
+                                                <span className="text-[13px] font-black text-slate-900">85%</span>
                                             </div>
                                         </td>
-                                        <td className="px-5 py-4 text-right">
+                                        <td className="px-6 py-4 text-right">
                                             <button
                                                 onClick={() => setSelectedSession(session)}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:border-slate-900 transition-all shadow-sm"
+                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-white text-[12px] font-bold text-slate-700 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm"
                                             >
-                                                View Records <HiOutlineArrowTopRightOnSquare className="w-3.5 h-3.5" />
+                                                Reports <HiOutlineArrowTopRightOnSquare size={14} />
                                             </button>
                                         </td>
                                     </tr>
@@ -477,8 +478,10 @@ const History = () => {
                             </tbody>
                         </table>
                         {filteredSessions.length === 0 && (
-                            <div className="p-12 text-center text-slate-400 font-medium border-t border-slate-100">
-                                No sessions found for the selected filters.
+                            <div className="p-16 text-center text-slate-400 font-medium bg-slate-50/30">
+                                <HiOutlineMagnifyingGlass className="w-10 h-10 mx-auto mb-4 text-slate-200" />
+                                <p className="text-lg text-slate-500 font-bold mb-1">No matches found</p>
+                                <p className="text-sm">Try adjusting your filters or search terms.</p>
                             </div>
                         )}
                     </div>
@@ -486,63 +489,43 @@ const History = () => {
             )}
 
             {selectedSession && (
-                <DebriefSummary
-                    session={selectedSession}
-                    onClose={() => setSelectedSession(null)}
-                />
+                <DebriefSummary session={selectedSession} onClose={() => setSelectedSession(null)} />
             )}
 
-            {/* No Data Popup */}
             {noDataPopup && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/10 backdrop-blur-sm" onClick={() => setNoDataPopup(false)}>
-                    <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full animate-in fade-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="mb-4 flex items-center gap-3 text-amber-600">
+                    <div className="bg-white p-6 rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="mb-4 flex items-center gap-3 text-amber-500">
                             <HiOutlineCalendar className="w-6 h-6" />
-                            <h3 className="font-bold text-lg text-slate-900">No Session Data</h3>
+                            <h3 className="font-bold text-lg text-slate-900">Empty Logbook</h3>
                         </div>
-                        <p className="text-slate-500 text-sm mb-6">There are no training sessions scheduled or recorded for {popupDateStr}.</p>
-                        <div className="flex justify-end">
-                            <button onClick={() => setNoDataPopup(false)} className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-lg transition-colors">
-                                Close
-                            </button>
-                        </div>
+                        <p className="text-slate-500 text-sm mb-6">No historical training sessions found for {popupDateStr}.</p>
+                        <button onClick={() => setNoDataPopup(false)} className="w-full py-2.5 bg-slate-900 text-white font-bold text-sm rounded-xl hover:bg-slate-800 transition">Close</button>
                     </div>
                 </div>
             )}
 
-            {/* Day Sessions Popup */}
             {daySessionsPopup && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/10 backdrop-blur-sm" onClick={() => setDaySessionsPopup(null)}>
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-900">Sessions for {popupDateStr}</h3>
-                            <button onClick={() => setDaySessionsPopup(null)} className="p-1 hover:bg-slate-200 rounded-md text-slate-500 transition-colors">
-                                <HiOutlineXMark className="w-5 h-5" />
-                            </button>
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-900">Records for {popupDateStr}</h3>
+                            <button onClick={() => setDaySessionsPopup(null)} className="p-1 hover:bg-slate-200 rounded-md text-slate-500"><HiOutlineXMark size={20} /></button>
                         </div>
                         <div className="overflow-y-auto p-4 flex flex-col gap-3">
                             {daySessionsPopup.map(s => (
                                 <button
                                     key={s.id}
-                                    onClick={() => {
-                                        setDaySessionsPopup(null);
-                                        setSelectedSession(s);
-                                    }}
-                                    className="text-left flex items-start justify-between p-4 bg-white border border-slate-200 hover:border-blue-300 rounded-xl transition-all shadow-sm hover:shadow-md"
+                                    onClick={() => { setDaySessionsPopup(null); setSelectedSession(s); }}
+                                    className="text-left flex items-start justify-between p-4 bg-white border border-slate-200 hover:border-blue-500 rounded-xl transition-all shadow-sm group"
                                 >
                                     <div>
-                                        <p className="text-sm font-bold text-slate-900 mb-2">{s.topic}</p>
+                                        <p className="text-[13px] font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">{s.topic}</p>
                                         <div className="flex items-center gap-2">
-                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${s.type.includes('Flight') ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                                s.type.includes('Simulator') ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                                    'bg-amber-50 text-amber-900 border-amber-200'
-                                                }`}>
-                                                {s.type}
-                                            </span>
-                                            <span className="text-[11px] font-medium text-slate-500">{s.trainee}</span>
+                                            <span className="text-[10px] font-bold text-slate-500">{s.trainee}</span>
                                         </div>
                                     </div>
-                                    <HiOutlineArrowTopRightOnSquare className="w-4 h-4 text-slate-400 mt-1" />
+                                    <HiOutlineArrowTopRightOnSquare className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />
                                 </button>
                             ))}
                         </div>
@@ -554,4 +537,3 @@ const History = () => {
 };
 
 export default History;
-

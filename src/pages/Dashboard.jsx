@@ -144,7 +144,7 @@ const Dashboard = () => {
           ) : (
             <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center gap-2">
               <Clock size={24} className="text-slate-200" />
-              There are no more upcoming sessions for today
+              No upcoming sessions
             </div>
           )}
         </div>

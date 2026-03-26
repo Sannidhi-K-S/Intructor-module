@@ -34,7 +34,7 @@ export const getHistorySessions = async () => {
                 return {
                     id: s.id,
                     topic: s.session_title,
-                    type: (s.training_type || "Ground_School").replace("_", " "),
+                    type: s.training_type === "Ground_School" ? "Class" : (s.training_type || "Class").replace("_", " "),
                     trainee: trainee?.name || "Unknown Trainee",
 
                     resourceUsed: training?.resource_id || (s.aircraft_id ? `Aircraft ${s.aircraft_id}` : (s.simulator_id ? `Simulator ${s.simulator_id}` : "N/A")),
