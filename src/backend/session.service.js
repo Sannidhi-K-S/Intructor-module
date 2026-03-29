@@ -108,6 +108,10 @@ export const getDashboardData = async () => {
       user: {
         name: instructors?.name || "Instructor",
         role: instructors?.designation || "Senior Instructor",
+        instructorId: instructors?.instructorId || "INST-001",
+        email: instructors?.email || "instructor@fsms.aero",
+        phone: instructors?.phone || "+1 (555) 000-0000",
+        designation: instructors?.designation || "Senior Flight Instructor",
       },
       sessions: result, // Return all today's sessions
     };
