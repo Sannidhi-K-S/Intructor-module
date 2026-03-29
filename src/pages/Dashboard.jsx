@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import useAppStore from "../store/useAppStore";
 import SessionList from "./Sessionlist";
 import SessionPreparationPanel from "./SessionPreparation";
-import { Plane, AlertCircle, Clock, FileText, User } from "lucide-react";
+import { Plane, AlertCircle, Clock, FileText, User, Calendar, Activity, CheckCircle } from "lucide-react";
 
 /**
  * Instructor Dashboard
@@ -54,99 +54,134 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8 min-h-screen bg-slate-50">
+    <div className="max-w-[1400px] mx-auto px-6 py-1 space-y-6 min-h-screen bg-gray-50/50">
 
-      {/* 1. INSTRUCTOR PROFILE HEADER */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-shadow">
-        <div className="flex items-center gap-6">
-          <div className="w-16 h-16 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 text-xl font-bold border border-slate-200 shadow-sm">
-            {user?.name?.split(' ').map(n => n[0]).join('') || "IN"}
-          </div>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold text-slate-900 leading-tight">
-              {user?.name || "Instructor"}
-            </h1>
-            <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
-              <User size={14} className="text-slate-400" />
-              {user?.role || "Senior Flight Instructor"} • Flight Standards Unit
-            </p>
-          </div>
-        </div>
+      {/* 🔥 DASHBOARD HEADER & STATS */}
+      <div className="space-y-1">
 
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-3 bg-red-50/50 border border-red-100 rounded-lg px-4 py-2">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-sm font-bold text-slate-700">{pendingCounts.live} Live Now</span>
+        <div className="grid grid-cols-4 gap-2 md:gap-4 lg:gap-5 overflow-x-auto pb-2 scrollbar-none">
+          {/* Sessions Today */}
+          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-blue-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
+            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
+              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-blue-600 uppercase tracking-tighter md:tracking-wider">Sessions</span>
+              <div className="hidden xs:block p-1 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-blue-600" />
+              </div>
+            </div>
+            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">{sessions.length}</span>
           </div>
-          <div className="flex items-center gap-3 bg-amber-50/50 border border-amber-100 rounded-lg px-4 py-2">
-            <AlertCircle size={18} className="text-amber-600" />
-            <span className="text-sm font-bold text-slate-700">{pendingCounts.pending} Action Required</span>
+
+          {/* Live Sessions */}
+          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-red-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
+            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
+              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-red-500 uppercase tracking-tighter md:tracking-wider flex items-center gap-0.5">
+                Live
+                {pendingCounts.live > 0 && <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />}
+              </span>
+              <div className="hidden xs:block p-1 bg-red-50 rounded-lg group-hover:bg-red-100 transition-colors">
+                <Activity className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-red-500" />
+              </div>
+            </div>
+            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
+              {pendingCounts.live}
+            </span>
+          </div>
+
+          {/* Pending Sessions */}
+          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-amber-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
+            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
+              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-amber-500 uppercase tracking-tighter md:tracking-wider">Pending</span>
+              <div className="hidden xs:block p-1 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
+                <AlertCircle className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-amber-500" />
+              </div>
+            </div>
+            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
+              {pendingCounts.pending}
+            </span>
+          </div>
+
+          {/* Completed Sessions */}
+          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
+            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
+              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-emerald-500 uppercase tracking-tighter md:tracking-wider font-outfit">Done</span>
+              <div className="hidden xs:block p-1 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
+                <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-emerald-500" />
+              </div>
+            </div>
+            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
+              {sessions.filter(s => s.status === "completed").length}
+            </span>
           </div>
         </div>
       </div>
 
       {/* 2. UPCOMING SESSIONS (Next Seq) - Styled exactly like Today's List */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-slate-900">
-            Upcoming Sessions
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-blue-600 flex items-center gap-2">
+            <Clock size={18} className="text-blue-600" />
+            Upcoming Session
           </h2>
         </div>
 
-        {/* Column Titles matched to SessionList */}
-        <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold uppercase tracking-wide text-slate-500">
-          <span>Time</span>
-          <span>Mode</span>
-          <span>Lesson</span>
-          <span>Trainee</span>
-          <span>Resource</span>
-          <span>Status</span>
-        </div>
-        
-        <div className="divide-y divide-slate-100">
-          {nextSession ? (
-            <button 
-              onClick={() => {
-                console.log("Activating next session:", nextSession);
-                setActiveSession(nextSession);
-                scrollToPrep();
-              }}
-              // Item style matched to SessionList active or row item
-              className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 hover:bg-slate-50 transition border-l-2 border-blue-500 bg-blue-50/10 group"
-            >
-              <span className="text-sm text-slate-700 font-medium whitespace-nowrap">
-                {nextSession.startTime}–{nextSession.endTime}
-              </span>
-
-              <span className={`text-sm font-semibold px-3 py-1.5 rounded-md w-fit ${modeColor(nextSession.type)} shadow-sm`}>
-                {nextSession.type}
-              </span>
-
-              <span className="text-sm font-bold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                {(nextSession.topic || "").replace(/\s*\(\d+m\)$/, "")}
-              </span>
-
-              <span className="text-sm text-slate-700 font-medium truncate">
-                {nextSession.trainee}
-              </span>
-
-              <span className="text-sm text-slate-700 font-medium truncate">
-                {nextSession.resourceUsed}
-              </span>
-
-              <div className="flex justify-end pr-2 items-center">
-                <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                  <Clock size={10} className="text-blue-600" />
-                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">Pending</span>
-                </div>
-              </div>
-            </button>
-          ) : (
-            <div className="p-10 text-center text-slate-400 font-medium flex flex-col items-center gap-2">
-              <Clock size={24} className="text-slate-200" />
-              No upcoming sessions
+        <div className="overflow-x-auto w-full">
+          <div className="min-w-[1000px]">
+            {/* Column Titles matched to SessionList */}
+            <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-blue-50 border-b border-gray-200 text-sm font-bold uppercase tracking-wide text-gray-700 font-outfit">
+              <span>Time</span>
+              <span>Mode</span>
+              <span>Lesson</span>
+              <span>Trainee</span>
+              <span>Resource</span>
+              <span>Status</span>
             </div>
-          )}
+
+            <div className="divide-y divide-gray-100">
+              {nextSession ? (
+                <button
+                  onClick={() => {
+                    console.log("Activating next session:", nextSession);
+                    setActiveSession(nextSession);
+                    scrollToPrep();
+                  }}
+                  // Item style matched to SessionList active or row item
+                  className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 hover:bg-gray-50 transition border-l-2 border-blue-600 bg-blue-50/30 group"
+                >
+                  <span className="text-sm text-gray-700 font-medium whitespace-nowrap">
+                    {nextSession.startTime}–{nextSession.endTime}
+                  </span>
+
+                  <span className={`text-sm font-semibold px-3 py-1.5 rounded-md w-fit ${modeColor(nextSession.type)} shadow-sm`}>
+                    {nextSession.type}
+                  </span>
+
+                  <span className="text-sm font-bold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                    {(nextSession.topic || "").replace(/\s*\(\d+m\)$/, "")}
+                  </span>
+
+                  <span className="text-sm text-gray-700 font-medium truncate">
+                    {nextSession.trainee}
+                  </span>
+
+                  <span className="text-sm text-gray-700 font-medium truncate">
+                    {nextSession.resourceUsed}
+                  </span>
+
+                  <div className="flex justify-end pr-2 items-center">
+                    <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                      <Clock size={10} className="text-blue-700" />
+                      <span className="text-[10px] font-bold text-blue-700 uppercase tracking-tight">Pending</span>
+                    </div>
+                  </div>
+                </button>
+              ) : (
+                <div className="p-10 text-center text-gray-400 font-medium flex flex-col items-center gap-2">
+                  <Clock size={24} className="text-gray-200" />
+                  No upcoming sessions
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -154,7 +189,7 @@ const Dashboard = () => {
       <div className="space-y-8">
         {/* Full list of all sessions today */}
         <SessionList onSessionSelect={scrollToPrep} />
-        
+
         {/* Preparation Workspace (Active session detail loader) */}
         <div id="session-prep-area" className="scroll-m-8">
           <SessionPreparationPanel />

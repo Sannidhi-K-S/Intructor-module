@@ -23,7 +23,7 @@ const SessionList = ({ onSessionSelect }) => {
     const isCompleted = session.status === "completed";
     const isOngoing = session.status === "ongoing";
     const isUpcoming = session.status === "upcoming";
-    const needsAction = isCompleted && !session.debriefSummary; 
+    const needsAction = isCompleted && !session.debriefSummary;
 
     if (needsAction) {
       return (
@@ -51,9 +51,9 @@ const SessionList = ({ onSessionSelect }) => {
     }
     if (isUpcoming) {
       return (
-        <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-full border border-blue-100" title="Pending">
-          <Clock size={10} className="text-blue-600" />
-          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">Pending</span>
+        <div className="flex items-center gap-1.5 bg-blue-50/50 px-2 py-1 rounded-full border border-blue-100" title="Pending">
+          <Clock size={10} className="text-blue-700/80" />
+          <span className="text-[10px] font-bold text-blue-700/80 uppercase tracking-tight">Pending</span>
         </div>
       );
     }
@@ -66,7 +66,7 @@ const SessionList = ({ onSessionSelect }) => {
     const needsAction = isCompleted && !session.debriefSummary;
 
     setActiveSession(session);
-    
+
     if (isOngoing) {
       navigate("/training");
     } else if (isCompleted || needsAction) {
@@ -79,77 +79,80 @@ const SessionList = ({ onSessionSelect }) => {
   const modeColor = (type) => {
     if (type === "Simulator") return "bg-purple-50 text-purple-700";
     if (type === "Class") return "bg-amber-50 text-amber-700";
-    return "bg-blue-50 text-blue-700";
+    return "bg-blue-50/50 text-blue-700/80";
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mt-6">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mt-6">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-        <h2 className="text-xl font-semibold text-slate-900">
+      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+        <h2 className="text-xl font-semibold text-gray-900">
           Today's Schedule
         </h2>
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-gray-500">
           {sortedSessions.length} sessions
         </span>
       </div>
 
-      {/* Column Titles Updated for larger status labels */}
-      <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-slate-50 border-b border-slate-200 text-sm font-semibold uppercase tracking-wide text-slate-500">
-        <span>Time</span>
-        <span>Mode</span>
-        <span>Lesson</span>
-        <span>Trainee</span>
-        <span>Resource</span>
-        <span>Status</span>
-      </div>
-
-      <div className="divide-y divide-slate-100">
-        {sortedSessions.length === 0 && (
-          <div className="p-6 text-center text-slate-400">
-            No sessions available for today
+      <div className="overflow-x-auto w-full">
+        <div className="min-w-[1000px]">
+          {/* Column Titles Updated for larger status labels */}
+          <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-blue-50/50 border-b border-gray-200 text-sm font-bold uppercase tracking-wide text-gray-700 font-outfit">
+            <span>Time</span>
+            <span>Mode</span>
+            <span>Lesson</span>
+            <span>Trainee</span>
+            <span>Resource</span>
+            <span>Status</span>
           </div>
-        )}
 
-        {sortedSessions.map((session) => {
-          const isActive = activeSession?.id === session.id;
-
-          return (
-            <button
-              key={session.id}
-              onClick={() => handleAction(session)}
-              className={`grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 transition ${
-                isActive
-                  ? "bg-blue-50/40 border-l-2 border-blue-500"
-                  : "hover:bg-slate-50"
-              }`}
-            >
-              <span className="text-sm text-slate-700 whitespace-nowrap">
-                {session.startTime}–{session.endTime}
-              </span>
-
-              <span className={`text-sm font-semibold px-3 py-1.5 rounded-md w-fit ${modeColor(session.type)}`}>
-                {session.type}
-              </span>
-
-              <span className="text-sm font-semibold text-slate-900 truncate">
-                {(session.topic || "").replace(/\s*\(\d+m\)$/, "")}
-              </span>
-
-              <span className="text-sm text-slate-700 truncate">
-                {session.trainee}
-              </span>
-
-              <span className="text-sm text-slate-700 truncate">
-                {session.resourceUsed}
-              </span>
-
-              <div className="flex justify-end pr-2 items-center h-full">
-                {getStatusDisplay(session)}
+          <div className="divide-y divide-gray-100">
+            {sortedSessions.length === 0 && (
+              <div className="p-6 text-center text-gray-400">
+                No sessions available for today
               </div>
-            </button>
-          );
-        })}
+            )}
+
+            {sortedSessions.map((session) => {
+              const isActive = activeSession?.id === session.id;
+
+              return (
+                <button
+                  key={session.id}
+                  onClick={() => handleAction(session)}
+                  className={`grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 transition ${isActive
+                      ? "bg-blue-50/50 border-l-2 border-blue-700/50 shadow-sm"
+                      : "hover:bg-gray-50"
+                    }`}
+                >
+                  <span className="text-sm text-gray-700 whitespace-nowrap">
+                    {session.startTime}–{session.endTime}
+                  </span>
+
+                  <span className={`text-sm font-semibold px-3 py-1.5 rounded-md w-fit ${modeColor(session.type)}`}>
+                    {session.type}
+                  </span>
+
+                  <span className="text-sm font-semibold text-gray-900 truncate">
+                    {(session.topic || "").replace(/\s*\(\d+m\)$/, "")}
+                  </span>
+
+                  <span className="text-sm text-gray-700 truncate">
+                    {session.trainee}
+                  </span>
+
+                  <span className="text-sm text-gray-700 truncate">
+                    {session.resourceUsed}
+                  </span>
+
+                  <div className="flex justify-end pr-2 items-center h-full">
+                    {getStatusDisplay(session)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

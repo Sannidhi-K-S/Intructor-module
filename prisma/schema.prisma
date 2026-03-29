@@ -85,6 +85,7 @@ model Trainee {
 
 model Instructor {
   id           Int      @id @default(autoincrement())
+  instructorId String   @unique @default("INST-001")
   name         String
   email        String   @unique
   phone        String?

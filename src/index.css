@@ -6,29 +6,35 @@
 
 @layer base {
   body {
-    @apply antialiased bg-slate-50 text-slate-800 font-sans text-sm selection:bg-primary-100 selection:text-primary-900;
+    @apply antialiased bg-gray-50 text-gray-800 font-sans text-sm selection:bg-blue-100 selection:text-blue-900;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-outfit text-slate-900 tracking-tight;
+    @apply font-outfit text-gray-900 tracking-tight;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white border border-slate-200 shadow-sm rounded-xl transition-all duration-300;
+    @apply bg-white border border-gray-200 shadow-sm rounded-xl transition-all duration-300;
   }
 
   .glass-card:hover {
-    @apply shadow-md border-slate-300 -translate-y-0.5;
+    @apply shadow-md border-gray-300 -translate-y-0.5;
   }
 
+  /* Modified nav-link to support vertical indicator bar */
   .nav-link {
-    @apply flex items-center gap-2.5 px-3 py-2 text-[14px] font-medium text-slate-500 rounded-lg transition-all duration-200 hover:bg-slate-100 hover:text-slate-900;
+    @apply flex items-center gap-2.5 px-4 py-2 text-[14px] font-medium text-gray-500 rounded-lg transition-all duration-200 hover:bg-gray-50 relative overflow-hidden;
   }
 
   .nav-link-active {
-    @apply text-primary-600 bg-white shadow-sm ring-1 ring-slate-200/50;
+    @apply text-blue-700 bg-blue-50/80 shadow-sm border border-gray-100;
+  }
+
+  .nav-link-active::before {
+    content: '';
+    @apply absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] bg-blue-600 rounded-full;
   }
 
   .btn {
@@ -36,15 +42,15 @@
   }
 
   .btn-primary {
-    @apply bg-slate-900 text-white hover:bg-slate-800 shadow-sm;
+    @apply bg-blue-600 text-white hover:bg-blue-700 shadow-sm;
   }
 
   .btn-secondary {
-    @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+    @apply bg-white text-gray-700 border border-gray-200 hover:bg-gray-50;
   }
 
   .input-field {
-    @apply w-full px-3 py-2 bg-white border border-slate-200 rounded-lg outline-none transition-all duration-200 focus:border-slate-400 focus:ring-4 focus:ring-slate-400/5 text-sm;
+    @apply w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none transition-all duration-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5 text-sm;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -54,7 +60,7 @@
     @apply bg-transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full hover:bg-slate-300;
+    @apply bg-gray-200 rounded-full hover:bg-gray-300;
   }
 
   /* Tablet specific adjustments */
@@ -66,5 +72,5 @@
 }
 
 :root {
-  --primary: 15, 23, 42; /* Slate 900 */
+  --primary: 37, 99, 235; /* Blue 600 */
 }
