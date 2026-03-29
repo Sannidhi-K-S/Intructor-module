@@ -14,6 +14,7 @@ import {
   Italic,
   Trash2
 } from "lucide-react";
+
 IText.prototype.editable = true;
 
 const tools = ["select", "pan", "pen", "text", "highlight", "eraser"];
@@ -34,9 +35,7 @@ const CanvasBoard = ({
   setActiveTool,
   canvasData,
   setCanvasData,
-  questionId
 }) => {
-
   const [toolOpen, setToolOpen] = useState(false);
   const isInitializingRef = React.useRef(true);
   const [fontSize, setFontSize] = useState(18);
@@ -49,6 +48,11 @@ const CanvasBoard = ({
   const historyRef = React.useRef([]);
   const historyIndexRef = React.useRef(-1);
   const isUndoRedoActive = React.useRef(false);
+  const setCanvasDataRef = React.useRef(setCanvasData);
+
+  useEffect(() => {
+    setCanvasDataRef.current = setCanvasData;
+  }, [setCanvasData]);
 
   /* ================= AUTO CLOSE TOOL ================= */
   useEffect(() => {
@@ -57,14 +61,9 @@ const CanvasBoard = ({
         setToolOpen(false);
       }
     };
-
     window.addEventListener("click", close);
-
-    return () => {
-      window.removeEventListener("click", close);
-    };
+    return () => window.removeEventListener("click", close);
   }, []);
-
 
   /* ================= CANVAS INIT ================= */
   useEffect(() => {
@@ -79,12 +78,10 @@ const CanvasBoard = ({
 
     const resize = () => {
       if (!containerRef.current) return;
-
       canvas.setDimensions({
         width: containerRef.current.clientWidth,
         height: 600,
       });
-
       canvas.renderAll();
     };
 
@@ -103,7 +100,7 @@ const CanvasBoard = ({
         return;
       }
 
-      setCanvasData(json);
+      setCanvasDataRef.current(json);
 
       historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
       historyRef.current.push(strJson);
@@ -118,503 +115,251 @@ const CanvasBoard = ({
     canvas.on("object:removed", saveCanvas);
     canvas.on("text:changed", saveCanvas);
 
-    /* 🔥 AUTO EXPAND (STABLE VERSION) */
-    canvas.on("path:created", () => {
-      const container = containerRef.current;
-      if (!container) return;
-
-      setTimeout(() => {
-        const objects = canvas.getObjects();
-        if (!objects.length) return;
-
-        let maxY = 0;
-
-        objects.forEach(obj => {
-          obj.setCoords();
-          const bottom = obj.aCoords?.bl?.y || (obj.top + obj.height);
-          if (bottom > maxY) maxY = bottom;
-        });
-
-        // Expand if they draw within 200px of bottom
-        if (maxY > canvas.height - 200) {
-          const newHeight = canvas.height + 600;
-          canvas.setDimensions({ width: canvas.width, height: newHeight });
-          canvas.renderAll();
-        }
-      }, 120);
-    });
-
-    /* SELECTION LOGIC */
-    const handleSelection = (e) => {
-      const selected = e.selected?.[0];
-      if (selected instanceof IText) {
-        setSelectedText(selected);
-        const bound = selected.getBoundingRect();
-        setTextBarPos({
-          top: bound.top - 60,
-          left: bound.left + (bound.width / 2) - 60
-        });
-      } else {
-        setSelectedText(null);
-      }
-    };
-
-    canvas.on("selection:created", handleSelection);
-    canvas.on("selection:updated", handleSelection);
-    canvas.on("selection:cleared", () => setSelectedText(null));
-    canvas.on("object:moving", (opt) => {
-      if (opt.target instanceof IText) {
-        const bound = opt.target.getBoundingRect();
-        setTextBarPos({
-          top: bound.top - 60,
-          left: bound.left + (bound.width / 2) - 60
-        });
-      }
-    });
-
     return () => {
       window.removeEventListener("resize", resize);
-      canvas.off("selection:created");
-      canvas.off("selection:updated");
-      canvas.off("selection:cleared");
-      canvas.off("object:moving");
       canvas.dispose();
       fabricCanvas.current = null;
     };
   }, []);
 
-  /* ================= LOAD PER QUESTION ================= */
-useEffect(() => {
-  const canvas = fabricCanvas.current;
-  if (!canvas) return;
+  /* ================= LOAD DATA (ONCE ON MOUNT) ================= */
+  useEffect(() => {
+    const canvas = fabricCanvas.current;
+    if (!canvas) return;
 
-  isInitializingRef.current = true;
+    isInitializingRef.current = true;
 
-  if (canvasData) {
-    canvas.loadFromJSON(canvasData, () => {
-      // 🔥 Expand canvas after load
-      let maxY = 600;
-
-      canvas.getObjects().forEach(obj => {
-        obj.setCoords();
-
-        const bottom =
-          obj.aCoords?.bl?.y ||
-          (obj.top + (obj.height * (obj.scaleY || 1)));
-
-        if (bottom > maxY) maxY = bottom;
+    if (canvasData) {
+      canvas.loadFromJSON(canvasData).then(() => {
+        canvas.renderAll();
+        isInitializingRef.current = false;
+        historyRef.current = [JSON.stringify(canvas.toJSON())];
+        historyIndexRef.current = 0;
       });
-
-      if (maxY > 600) {
-        canvas.setDimensions({
-          width: containerRef.current?.clientWidth || canvas.width,
-          height: maxY + 300,
-        });
-      }
-
+    } else {
+      canvas.clear();
+      canvas.backgroundColor = "#ffffff";
       canvas.renderAll();
-
-      // ✅ reset ONCE
       isInitializingRef.current = false;
-
-      // ✅ reset history
       historyRef.current = [JSON.stringify(canvas.toJSON())];
       historyIndexRef.current = 0;
-    });
-
-  } else {
-    // 🔥 empty canvas state
-    canvas.clear();
-    canvas.backgroundColor = "#ffffff";
-
-    if (containerRef.current) {
-      canvas.setDimensions({
-        width: containerRef.current.clientWidth,
-        height: 600,
-      });
     }
-
-    canvas.renderAll();
-
-    isInitializingRef.current = false;
-
-    historyRef.current = [JSON.stringify(canvas.toJSON())];
-    historyIndexRef.current = 0;
-  }
-
-}, []); // DO NOT CHANGE 
+    // Dependency array is empty because we rely on the parent's 'key' prop 
+    // to remount the component when the exercise changes.
+  }, []);
 
   /* ================= TOOL ENGINE ================= */
   useEffect(() => {
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    // 🔥 RESET EVERYTHING FIRST
     canvas.isDrawingMode = false;
     canvas.selection = true;
     canvas.defaultCursor = "default";
     canvas.hoverCursor = "move";
 
-    canvas.forEachObject(obj => {
-      obj.selectable = true;
-      obj.evented = true;
-    });
-
-    canvas.off("mouse:down");
-    canvas.off("mouse:move");
-    canvas.off("mouse:up");
-
-    // ================= TOOLS =================
+    let currentMouseDown = null;
 
     if (activeTool === "pen") {
       canvas.isDrawingMode = true;
-
       const brush = new PencilBrush(canvas);
       brush.color = penColor;
       brush.width = size;
       canvas.freeDrawingBrush = brush;
-    }
-
-    else if (activeTool === "highlight") {
+    } else if (activeTool === "highlight") {
       canvas.isDrawingMode = true;
-
       const brush = new PencilBrush(canvas);
       brush.color = highlightColor;
-      brush.width = size * 2;
+      brush.width = size * 4;
       canvas.freeDrawingBrush = brush;
-    }
-
-    else if (activeTool === "eraser") {
-      const eraserSVG = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16a2 2 0 0 1 0-2.8l9.2-9.2a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L11 20"/><path d="M15 15l-4-4"/></svg>') 0 24, auto`;
-      
-      canvas.defaultCursor = eraserSVG;
-      canvas.hoverCursor = eraserSVG;
-
-    canvas.on("mouse:down", (e) => {
-  if (e.target) {
-    canvas.remove(e.target);
-    canvas.renderAll();
-
-    // 🔥 FORCE SAVE AFTER DELETE
-    setCanvasData(canvas.toJSON());
-  }
-});
-    }
-
-    else if (activeTool === "text") {
+    } else if (activeTool === "pan") {
+      canvas.isDrawingMode = false;
       canvas.selection = false;
+      canvas.defaultCursor = "grab";
+
+      let isDragging = false;
+      let lastY = 0;
+
+      currentMouseDown = (opt) => {
+        isDragging = true;
+        canvas.defaultCursor = "grabbing";
+        lastY = opt.e.clientY || opt.e.touches?.[0]?.clientY;
+      };
+
+      const handleMouseMove = (opt) => {
+        if (!isDragging) return;
+        const currentY = opt.e.clientY || opt.e.touches?.[0]?.clientY;
+        const deltaY = currentY - lastY;
+        if (containerRef.current) {
+          containerRef.current.scrollTop -= deltaY;
+        }
+        lastY = currentY;
+      };
+
+      const handleMouseUp = () => {
+        isDragging = false;
+        canvas.defaultCursor = "grab";
+      };
+
+      canvas.on("mouse:down", currentMouseDown);
+      canvas.on("mouse:move", handleMouseMove);
+      canvas.on("mouse:up", handleMouseUp);
+
+      return () => {
+        canvas.off("mouse:down", currentMouseDown);
+        canvas.off("mouse:move", handleMouseMove);
+        canvas.off("mouse:up", handleMouseUp);
+      };
+    } else if (activeTool === "text") {
+      canvas.isDrawingMode = false;
+      canvas.selection = true;
       canvas.defaultCursor = "text";
 
-      canvas.on("mouse:down", (opt) => {
-        if (opt.target instanceof IText) return;
+      currentMouseDown = (opt) => {
+        if (opt.target && opt.target instanceof IText) {
+          opt.target.enterEditing();
+          return;
+        }
 
         const pointer = opt.scenePoint || (canvas.getPointer ? canvas.getPointer(opt.e) : { x: opt.e.offsetX, y: opt.e.offsetY });
+        
+        // iPad Notes Style: Snap to left margin but keep the Y coordinate of the click
+        const leftMargin = 120;
 
-        const text = new IText(" ", {
-          left: pointer.x,
-          top: pointer.y,
+        const text = new IText("Start typing...", {
+          left: leftMargin,
+          top: pointer.y - 10,
           fontSize,
           fill: penColor,
-          editable: true,
+          fontFamily: "Inter, sans-serif",
+          editingBorderColor: penColor,
+          padding: 5,
         });
 
         canvas.add(text);
         canvas.setActiveObject(text);
 
-        // Required to let Fabric release native event holds before hooking focus
         setTimeout(() => {
           text.enterEditing();
           text.selectAll();
           if (text.hiddenTextarea) text.hiddenTextarea.focus();
           canvas.renderAll();
+          setActiveTool("select");
         }, 50);
-      });
-    }
+      };
+      canvas.on("mouse:down", currentMouseDown);
+    } else if (activeTool === "eraser") {
+      const eraserCursor = `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16a2 2 0 0 1 0-2.8l9.2-9.2a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8L11 20"/><path d="M15 15l-4-4"/></svg>') 12 12, auto`;
+      canvas.defaultCursor = eraserCursor;
+      canvas.hoverCursor = eraserCursor;
 
-    else if (activeTool === "select") {
-      canvas.isDrawingMode = false;
-    }
-
-    else if (activeTool === "pan") {
-      canvas.isDrawingMode = false;
-      canvas.selection = false;
-      canvas.defaultCursor = "grab";
-
-      canvas.forEachObject(obj => {
-        obj.selectable = false;
-        obj.evented = false;
-      });
-
-      let isDragging = false;
-      let lastY = 0;
-
-      canvas.on("mouse:down", (opt) => {
-        isDragging = true;
-        canvas.defaultCursor = "grabbing";
-        lastY = opt.e.clientY ?? opt.e.touches?.[0]?.clientY ?? opt.e.changedTouches?.[0]?.clientY ?? 0;
-      });
-
-      canvas.on("mouse:move", (opt) => {
-        if (!isDragging) return;
-        const currentY = opt.e.clientY ?? opt.e.touches?.[0]?.clientY ?? opt.e.changedTouches?.[0]?.clientY ?? 0;
-        if (currentY && lastY) {
-          const deltaY = currentY - lastY;
-          if (containerRef.current) {
-            containerRef.current.scrollTop -= deltaY;
-          }
-          lastY = currentY;
+      currentMouseDown = (e) => {
+        if (e.target) {
+          canvas.remove(e.target);
+          canvas.renderAll();
+          setCanvasDataRef.current(canvas.toJSON());
         }
-      });
-
-      canvas.on("mouse:up", () => {
-        isDragging = false;
-        canvas.defaultCursor = "grab";
-      });
+      };
+      canvas.on("mouse:down", currentMouseDown);
     }
 
-    canvas.renderAll();
-
+    return () => {
+      if (currentMouseDown) canvas.off("mouse:down", currentMouseDown);
+    };
   }, [activeTool, penColor, highlightColor, size, fontSize]);
-  /* ================= ICON ================= */
-const getIcon = (tool) => {
-  const size = 22;
-  const stroke = 2.5;
 
-  switch (tool) {
-    case "select": return <MousePointer2 size={size} strokeWidth={stroke} />;
-    case "pan": return <Hand size={size} strokeWidth={stroke} />;
-    case "pen": return <Pen size={size} strokeWidth={stroke} />;
-    case "text": return <Type size={size} strokeWidth={stroke} />;
-    case "highlight": return <Highlighter size={size} strokeWidth={stroke} />;
-    case "eraser": return <Eraser size={size} strokeWidth={stroke} />;
-    default: return null;
-  }
-};
-
-  /* ================= TEXT STYLING ================= */
-  const toggleStyle = (style) => {
-    if (!selectedText) return;
-    const canvas = fabricCanvas.current;
-
-    if (style === "bold") {
-      const current = selectedText.fontWeight;
-      selectedText.set("fontWeight", current === "bold" ? "normal" : "bold");
-    }
-    if (style === "italic") {
-      const current = selectedText.fontStyle;
-      selectedText.set("fontStyle", current === "italic" ? "normal" : "italic");
-    }
-    if (style === "delete") {
-      canvas.remove(selectedText);
-      setSelectedText(null);
-    }
-
-    canvas.renderAll();
-    
-    // Explicitly call to sync changes to history
-    if (fabricCanvas.current) {
-      if (!isInitializingRef.current && !isUndoRedoActive.current) {
-        setCanvasData(fabricCanvas.current.toJSON());
-      }
-    }
-  };
-
-  /* ================= UNDO / REDO ================= */
   const handleUndo = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     const canvas = fabricCanvas.current;
     if (!canvas || historyIndexRef.current <= 0) return;
-
     isUndoRedoActive.current = true;
     historyIndexRef.current -= 1;
-    const prevState = historyRef.current[historyIndexRef.current];
-
- canvas.loadFromJSON(JSON.parse(prevState), () => {
-  canvas.renderAll();
-  setCanvasData(canvas.toJSON());
-  isUndoRedoActive.current = false;
-});
+    canvas.loadFromJSON(JSON.parse(historyRef.current[historyIndexRef.current])).then(() => {
+      canvas.renderAll();
+      setCanvasDataRef.current(canvas.toJSON());
+      isUndoRedoActive.current = false;
+    });
   };
 
   const handleRedo = (e) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     const canvas = fabricCanvas.current;
     if (!canvas || historyIndexRef.current >= historyRef.current.length - 1) return;
-
     isUndoRedoActive.current = true;
     historyIndexRef.current += 1;
-    const nextState = historyRef.current[historyIndexRef.current];
-
- canvas.loadFromJSON(JSON.parse(nextState), () => {
-  canvas.renderAll();
-  setCanvasData(canvas.toJSON());
-  isUndoRedoActive.current = false;
-});
+    canvas.loadFromJSON(JSON.parse(historyRef.current[historyIndexRef.current])).then(() => {
+      canvas.renderAll();
+      setCanvasDataRef.current(canvas.toJSON());
+      isUndoRedoActive.current = false;
+    });
   };
 
   return (
     <div className="relative w-full border border-slate-200 rounded-xl overflow-hidden bg-white">
-      {/* FLOATING ACTION TOOLBAR */}
       <div className="toolbox absolute top-4 left-4 z-[999]">
         <div className="flex items-center gap-2 p-1.5 rounded-full bg-[#8b95a7]/90 backdrop-blur-md shadow-2xl border border-white/20 transition-all duration-300">
-
-          {/* MAIN TOGGLE / ACTIVE TOOL INDICATOR */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setToolOpen(!toolOpen);
-            }}
-            className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-all duration-300 transform active:scale-90
-                ${toolOpen ? "bg-[#ef4444] -rotate-90" : "bg-[#1e2a44] hover:scale-105"}`}
+            onClick={(e) => { e.stopPropagation(); setToolOpen(!toolOpen); }}
+            className={`w-14 h-14 rounded-full flex items-center justify-center text-white transition-all ${toolOpen ? "bg-[#ef4444]" : "bg-[#1e2a44]"}`}
           >
-{toolOpen ? <X size={20} /> : getIcon(activeTool)}          </button>
-
-          {/* EXPANDABLE MOD - TOOLS & SETTINGS */}
+            {toolOpen ? <X size={20} /> : <Pen size={22} />}
+          </button>
           {toolOpen && (
-            <div className="flex items-center gap-4 px-3 animate-in fade-in slide-in-from-left-4 duration-300">
-
-              {/* TOOLS */}
-              <div className="flex items-center gap-2 border-r border-white/30 pr-4">
-                {tools.map((tool) => (
+            <div className="flex items-center gap-4 px-3 tool-entering">
+              <div className="flex items-center gap-2 border-r border-white/20 pr-4">
+                {tools.map(t => (
                   <button
-                    key={tool}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveTool(tool);
-                      setToolOpen(false); // Close after selection
-                    }}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-all
-                        ${activeTool === tool
-                        ? "bg-[#1e2a44] text-white scale-110 shadow-md"
-                        : "text-white hover:bg-white/20"
-                      }`}
-                    title={tool.charAt(0).toUpperCase() + tool.slice(1)}
+                    key={t}
+                    onClick={(e) => { e.stopPropagation(); setActiveTool(t); }}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${activeTool === t ? "bg-[#1e2a44] text-white" : "text-white hover:bg-white/10"}`}
                   >
-                    {getIcon(tool)}
+                    {t === "pen" && <Pen size={20} />}
+                    {t === "text" && <Type size={20} />}
+                    {t === "eraser" && <Eraser size={20} />}
+                    {t === "select" && <MousePointer2 size={20} />}
+                    {t === "pan" && <Hand size={20} />}
+                    {t === "highlight" && <Highlighter size={20} />}
                   </button>
                 ))}
               </div>
 
-              {/* CONTEXTUAL SETTINGS (COLORS/SIZE) */}
-              <div className="flex items-center gap-3">
+              {/* COLORS */}
+              {(activeTool === "pen" || activeTool === "text") && (
+                <div className="flex items-center gap-2 border-r border-white/20 pr-4">
+                  {penColors.map(c => (
+                    <button
+                      key={c}
+                      onClick={(e) => { e.stopPropagation(); setPenColor(c); }}
+                      className="w-6 h-6 rounded-full border border-white/40"
+                      style={{ background: c, transform: penColor === c ? 'scale(1.2)' : 'none' }}
+                    />
+                  ))}
+                </div>
+              )}
 
-                {/* PEN COLORS */}
-                {activeTool === "pen" && penColors.map((c, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPenColor(c);
-                      setToolOpen(false);
-                    }}
-                    className="w-6 h-6 rounded-full cursor-pointer border-2 transition hover:scale-125 shadow-sm"
-                    style={{
-                      background: c,
-                      borderColor: penColor === c ? "white" : "transparent",
-                    }}
-                  />
-                ))}
+              {activeTool === "highlight" && (
+                <div className="flex items-center gap-2 border-r border-white/20 pr-4">
+                  {highlightColors.map(c => (
+                    <button
+                      key={c}
+                      onClick={(e) => { e.stopPropagation(); setHighlightColor(c); }}
+                      className="w-6 h-6 rounded-full border border-white/40"
+                      style={{ background: c, transform: highlightColor === c ? 'scale(1.2)' : 'none' }}
+                    />
+                  ))}
+                </div>
+              )}
 
-                {/* HIGHLIGHT COLORS */}
-                {activeTool === "highlight" && highlightColors.map((c, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setHighlightColor(c);
-                      setToolOpen(false);
-                    }}
-                    className="w-6 h-6 rounded-full cursor-pointer border-2 transition hover:scale-125 shadow-sm"
-                    style={{
-                      background: c,
-                      borderColor: highlightColor === c ? "white" : "transparent"
-                    }}
-                  />
-                ))}
-
-                {/* TEXT SIZE */}
-                {activeTool === "text" && (
-                  <div className="flex items-center bg-white/20 rounded-lg px-2 py-1">
-                    <span className="text-[10px] text-white font-bold mr-2 uppercase">Size</span>
-                    <select
-                      value={fontSize}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => setFontSize(Number(e.target.value))}
-                      className="bg-transparent text-white text-xs font-bold outline-none cursor-pointer"
-                    >
-                      {[12, 16, 18, 24, 32].map((s) => (
-                        <option key={s} value={s} className="text-slate-900">{s}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+              <div className="flex items-center gap-1">
+                <button onClick={handleUndo} className="p-2 text-white hover:bg-white/10 rounded-full transition-colors"><Undo2 size={18} /></button>
+                <button onClick={handleRedo} className="p-2 text-white hover:bg-white/10 rounded-full transition-colors"><Redo2 size={18} /></button>
               </div>
-
-              {/* HISTORY ACTIONS (UNDO/REDO) */}
-              <div className="flex items-center gap-1 border-l border-white/30 pl-4">
-                <button
-                  onClick={handleUndo}
-                  className={`w-9 h-9 text-white rounded-full flex items-center justify-center transition
-                    ${historyIndexRef.current > 0 ? "hover:bg-white/20" : "opacity-50 cursor-not-allowed"}`}
-                  title="Undo"
-                >
-<Undo2 size={18} strokeWidth={2.5} />                </button>
-                <button
-                  onClick={handleRedo}
-                  className={`w-9 h-9 text-white rounded-full flex items-center justify-center transition
-                    ${historyRef.current.length > 0 && historyIndexRef.current < historyRef.current.length - 1 ? "hover:bg-white/20" : "opacity-50 cursor-not-allowed"}`}
-                  title="Redo"
-                >
-<Redo2 size={18} strokeWidth={2.5} />                </button>
-              </div>
-
             </div>
           )}
         </div>
       </div>
-
-      {/* SCROLL CONTAINER */}
-      <div
-        ref={containerRef}
-        className="relative w-full h-[65vh] overflow-y-auto overflow-x-hidden custom-scrollbar bg-slate-50"
-      >
-        <canvas
-          ref={canvasRef}
-          style={{ pointerEvents: "auto" }}
-        />
-
-        {/* TEXT FLOATING BAR */}
-        {selectedText && (
-          <div
-            className="absolute z-[100] flex items-center gap-1 p-1 bg-[#1e2a44] rounded-lg shadow-xl border border-white/20 animate-in fade-in"
-            style={{
-              top: `${textBarPos.top}px`,
-              left: `${textBarPos.left}px`
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.preventDefault()}
-          >
-            <button
-              onClick={() => toggleStyle("bold")}
-              className={`w-8 h-8 rounded flex items-center justify-center text-white hover:bg-white/20 transition
-              ${selectedText.fontWeight === "bold" ? "bg-blue-500" : ""}`}
-            >
-<Bold size={16} strokeWidth={2.5} />            </button>
-            <button
-              onClick={() => toggleStyle("italic")}
-              className={`w-8 h-8 rounded flex items-center justify-center text-white hover:bg-white/20 transition
-              ${selectedText.fontStyle === "italic" ? "bg-blue-500" : ""}`}
-            >
-<Italic size={16} strokeWidth={2.5} />            </button>
-            <div className="w-[1px] h-4 bg-white/20 mx-1" />
-            <button
-              onClick={() => toggleStyle("delete")}
-              className="w-8 h-8 rounded flex items-center justify-center text-red-400 hover:bg-red-500/20 transition"
-            >
-<Trash2 size={16} strokeWidth={2.5} />            </button>
-          </div>
-        )}
-
+      <div ref={containerRef} className={`relative w-full h-[65vh] overflow-y-auto bg-slate-50 ${activeTool === 'eraser' ? 'eraser-active' : ''}`}>
+        <canvas ref={canvasRef} />
       </div>
     </div>
   );

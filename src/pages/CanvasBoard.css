@@ -1,40 +1,98 @@
+.training-container {
+  width: 100%;
+}
 
-.canvas-wrapper {
+.canvas-container {
   position: relative;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  overflow: hidden;
+  min-height: 60vh;
+  background: #f8fafc;
 }
 
-body {
-  overflow: auto; /* 🔥 fix */
+.toolbox {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Animations for Floating Toolbar */
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
+.toolbox button {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbox button:hover {
+  transform: scale(1.05);
+}
+
+.toolbox button:active {
+  transform: scale(0.95);
+}
+
+/* Custom Scrollbar for the Canvas Area */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Modal and Overlay styles for confirmation */
+.backdrop-blur-sm {
+  backdrop-filter: blur(4px);
 }
 
 .animate-in {
-  animation: slideInRight 0.3s ease-out forwards;
+  animation-duration: 0.2s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
 }
 
-/* Fallback for Tailwind classes if not present */
-.fade-in {
-  opacity: 0;
-  transition: opacity 0.3s ease-in-out;
+@keyframes zoom-in-95 {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-.slide-in-from-left-4 {
-  transform: translateX(-1rem);
+.zoom-in-95 {
+  animation-name: zoom-in-95;
 }
 
+/* Tablet Optimization */
+@media (max-width: 1024px) {
+  .canvas-card {
+    min-height: 50vh;
+  }
+  .toolbox {
+    top: 10px;
+    left: 10px;
+  }
+  .toolbox button {
+    width: 48px;
+    height: 48px;
+  }
+}
 
+/* Tool Entrance Animation */
+.tool-entering {
+  animation: slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
 
+@keyframes slideRight {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Custom Cursor Overrides */
+.canvas-container.eraser-active canvas {
+  cursor: crosshair !important;
+}
