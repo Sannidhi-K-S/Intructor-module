@@ -41,7 +41,7 @@ const calculateFinalGrade = (exercises) => {
 
 const TrainingData = () => {
   const navigate = useNavigate();
-  const { sessions, loadDashboard, setActiveSession, activeSession } = useAppStore();
+  const { sessions, loadDashboard, setActiveSession, activeSession, updateActiveSessionExercise } = useAppStore();
 
   const canvasRef = useRef(null);
   const fabricCanvas = useRef(null);
@@ -60,7 +60,9 @@ const TrainingData = () => {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [traineeInfo] = useState({ name: "Trainee Name", id: "TRN-8829" });
 
-  const ACTIVE_SESSION_TYPE = activeSession?.type || "flight";
+  const ACTIVE_SESSION_TYPE = activeSession?.type || "";
+  const IS_SUPPORTED_SESSION = ACTIVE_SESSION_TYPE.toLowerCase().includes("flight") || ACTIVE_SESSION_TYPE.toLowerCase().includes("simulator");
+
   const current = exercises.length > 0 ? exercises[activeExercise] : null;
   const finalGrade = calculateFinalGrade(exercises);
 
@@ -72,8 +74,13 @@ const TrainingData = () => {
       if (sessions.length === 0) {
         await loadDashboard();
         // If still 0 after loading, show the modal
-        if (useAppStore.getState().sessions.length === 0) {
+        const currentSessions = useAppStore.getState().sessions;
+        if (currentSessions.length === 0) {
           setShowDemoModal(true);
+        } else {
+          const ongoing = currentSessions.find(s => s.status === "ongoing");
+          if (ongoing) setActiveSession(ongoing);
+          else setShowDemoModal(true);
         }
       } else {
         const ongoing = sessions.find(s => s.status === "ongoing");
@@ -95,13 +102,13 @@ const TrainingData = () => {
     const initializePage = async () => {
       setLoading(true);
       try {
-        // Fetch session-specific exercises if available
         let exData = [];
+        // Priority 1: Data from the store (real session)
         if (activeSession?.lessonPlan?.exercises?.length > 0) {
           exData = activeSession.lessonPlan.exercises;
-        } else {
-          // Fallback to fetch from backend or hardcoded
-          const exRes = await fetch("http://localhost:5000/exercises");
+        } else if (!activeSession) {
+          // Priority 2: Templates from backend
+          const exRes = await fetch("http://localhost:5000/api/sessions/exercises");
           if (exRes.ok) exData = await exRes.json();
         }
 
@@ -119,12 +126,12 @@ const TrainingData = () => {
 
         if (isDemoMode) {
           let demoId = localStorage.getItem("demo_session_id");
-          if (!demoId) {
-             const res = await fetch("http://localhost:5000/create-session", { method: "POST" });
-             const data = await res.json();
-             demoId = data?.session_id;
-             if (demoId) localStorage.setItem("demo_session_id", demoId);
-          }
+           if (!demoId) {
+              const res = await fetch("http://localhost:5000/api/sessions/create-session", { method: "POST" });
+              const data = await res.json();
+              demoId = data?.session_id;
+              if (demoId) localStorage.setItem("demo_session_id", demoId);
+           }
           if (demoId) setSessionId(Number(demoId));
         } else if (activeSession?.id) {
           setSessionId(Number(activeSession.id));
@@ -146,16 +153,20 @@ const TrainingData = () => {
 
   /* ================= SAVE ================= */
   const saveToBackend = async (exercise) => {
-    if (!sessionId || !exercise?.id) return;
+    if (!sessionId || !exercise?.id || !exercise.canvasData || loading) return;
+    console.log("Saving to Backend: session", sessionId, "ex", exercise.id, "data size", JSON.stringify(exercise.canvasData).length);
     try {
-      await fetch("http://localhost:5000/save-exercise", {
+      await fetch("http://localhost:5000/api/sessions/save-exercise-detail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           exercise_id: exercise.id,
           session_id: sessionId,
+          name: exercise.name,
+          type: exercise.type,
           score: exercise.score || 0,
           canvas_data: exercise.canvasData || null,
+          notes: exercise.notes || "",
         }),
       });
     } catch (err) {
@@ -163,11 +174,15 @@ const TrainingData = () => {
     }
   };
 
+
+  /* ================= SCORE & CANVAS UPDATES ================= */
+
   const setScore = (score) => {
     setExercises(prev => {
       const updated = [...prev];
       updated[activeExercise].score = score;
       saveToBackend(updated[activeExercise]);
+      updateActiveSessionExercise(updated[activeExercise].id, { score });
       return updated;
     });
   };
@@ -176,9 +191,11 @@ const TrainingData = () => {
     setExercises(prev => {
       const updated = [...prev];
       updated[activeExercise].canvasData = data;
+      updateActiveSessionExercise(updated[activeExercise].id, { canvasData: data });
       return updated;
     });
   };
+
 
   /* ================= AUTO-SAVE CANVAS ================= */
   useEffect(() => {
@@ -235,6 +252,18 @@ const TrainingData = () => {
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading Training Module...</div>;
+  }
+
+  if (activeSession && !IS_SUPPORTED_SESSION && !isDemoMode) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-md w-full border-t-4 border-amber-500">
+          <h2 className="text-2xl font-bold mb-4">No Active Training Classes Found</h2>
+          <p className="text-slate-500 mb-6">The module "{ACTIVE_SESSION_TYPE}" does not support evaluation / training canvas.</p>
+          <button onClick={() => navigate("/")} className="btn-secondary px-6 py-2 rounded-lg border w-full">Back to Dashboard</button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -331,7 +360,7 @@ const TrainingData = () => {
           </div>
 
           <CanvasBoard
-            key={current?.id}
+            key={`${current?.id}-${!!current?.canvasData}`}
             canvasRef={canvasRef}
             fabricCanvas={fabricCanvas}
             containerRef={containerRef}
@@ -340,6 +369,7 @@ const TrainingData = () => {
             canvasData={current?.canvasData}
             setCanvasData={updateCanvasData}
           />
+
 
           <div className="flex justify-between items-center mt-6">
             <button

@@ -88,7 +88,7 @@ model Instructor {
 
 model TrainingData {
   id                 Int      @id @default(autoincrement())
-  session_id         Int      
+  session_id         Int      @unique
   mode               String?
   topic              String?
   instructor_id      Int
@@ -104,11 +104,15 @@ model TrainingData {
 model SessionExercise {
   id              Int      @id @default(autoincrement())
   training_id     Int
+  exercise_id     Int?     
   exercise_name   String
   exercise_type   String
   score           Float
+  canvas_data     String?  @db.LongText
   completed       Boolean  @default(false)
   notes           String?  @db.Text
   created_at      DateTime @default(now())
   training        TrainingData @relation(fields: [training_id], references: [id])
 }
+
+

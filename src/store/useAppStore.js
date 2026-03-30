@@ -9,6 +9,24 @@ const useAppStore = create((set) => ({
 
   setActiveSession: (session) => set({ activeSession: session }),
 
+  updateActiveSessionExercise: (exerciseId, data) => set((state) => {
+    if (!state.activeSession?.lessonPlan?.exercises) return state;
+    
+    const updatedExercises = state.activeSession.lessonPlan.exercises.map(ex => 
+      ex.id === exerciseId ? { ...ex, ...data } : ex
+    );
+    
+    return {
+      activeSession: {
+        ...state.activeSession,
+        lessonPlan: {
+          ...state.activeSession.lessonPlan,
+          exercises: updatedExercises
+        }
+      }
+    };
+  }),
+
   loadDashboard: async () => {
     try {
       const data = await fetchDashboard();

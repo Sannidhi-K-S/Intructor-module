@@ -49,6 +49,8 @@ const CanvasBoard = ({
   const historyIndexRef = React.useRef(-1);
   const isUndoRedoActive = React.useRef(false);
   const setCanvasDataRef = React.useRef(setCanvasData);
+  const hasInitialLoadedRef = React.useRef(false);
+  const lastPropsDataRef = React.useRef(null);
 
   useEffect(() => {
     setCanvasDataRef.current = setCanvasData;
@@ -101,6 +103,7 @@ const CanvasBoard = ({
       }
 
       setCanvasDataRef.current(json);
+      lastPropsDataRef.current = strJson;
 
       historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
       historyRef.current.push(strJson);
@@ -155,24 +158,26 @@ const CanvasBoard = ({
     };
   }, []);
 
-  /* ================= LOAD DATA (ONCE ON MOUNT) ================= */
+
+  /* ================= LOAD DATA (ON MOUNT OR WHEN ARRIVES) ================= */
   useEffect(() => {
     const canvas = fabricCanvas.current;
     if (!canvas) return;
 
-    isInitializingRef.current = true;
-
+    // Avoid reloading if we already loaded THIS data (or if we are the one who sent it)
+    const strData = canvasData ? JSON.stringify(canvasData) : null;
+    if (strData === lastPropsDataRef.current && hasInitialLoadedRef.current) return;
+    
+    // If we have data and haven't loaded it, OR if it's different data arriving from parent
     if (canvasData) {
+      isInitializingRef.current = true;
+      console.log("Canvas Loading Data...", canvasData);
       canvas.loadFromJSON(canvasData).then(() => {
+        console.log("Canvas Load Complete. Objects:", canvas.getObjects().length);
         let maxY = 600;
-
         canvas.getObjects().forEach(obj => {
           obj.setCoords();
-
-          const bottom =
-            obj.aCoords?.bl?.y ||
-            (obj.top + (obj.height * (obj.scaleY || 1)));
-
+          const bottom = obj.aCoords?.bl?.y || (obj.top + (obj.height * (obj.scaleY || 1)));
           if (bottom > maxY) maxY = bottom;
         });
 
@@ -184,21 +189,43 @@ const CanvasBoard = ({
         }
 
         canvas.renderAll();
-        isInitializingRef.current = false;
+        // Force multiple renders after objects are likely ready
+        const forceRender = () => {
+          if (!canvas) return;
+          canvas.calcOffset();
+          canvas.renderAll();
+          canvas.requestRenderAll();
+          isInitializingRef.current = false;
+        };
+        requestAnimationFrame(forceRender);
+        setTimeout(forceRender, 50); 
+        setTimeout(forceRender, 200); 
+        setTimeout(forceRender, 500); 
+
+
+
+        hasInitialLoadedRef.current = true;
+        lastPropsDataRef.current = strData;
         historyRef.current = [JSON.stringify(canvas.toJSON())];
         historyIndexRef.current = 0;
+      }).catch(err => {
+        console.error("Canvas Load Error:", err);
+        isInitializingRef.current = false;
       });
-    } else {
-      canvas.clear();
-      canvas.backgroundColor = "#ffffff";
-      canvas.renderAll();
-      isInitializingRef.current = false;
-      historyRef.current = [JSON.stringify(canvas.toJSON())];
-      historyIndexRef.current = 0;
+
+    } else if (!hasInitialLoadedRef.current) {
+        // Initial setup for empty canvas
+        canvas.clear();
+        canvas.backgroundColor = "#ffffff";
+        canvas.renderAll();
+        isInitializingRef.current = false;
+        hasInitialLoadedRef.current = true;
+        lastPropsDataRef.current = null;
+        historyRef.current = [JSON.stringify(canvas.toJSON())];
+        historyIndexRef.current = 0;
     }
-    // Dependency array is empty because we rely on the parent's 'key' prop 
-    // to remount the component when the exercise changes.
-  }, []);
+  }, [canvasData]);
+
 
   /* ================= TOOL ENGINE ================= */
   useEffect(() => {
