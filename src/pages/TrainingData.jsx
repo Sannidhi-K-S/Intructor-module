@@ -66,9 +66,15 @@ const TrainingData = () => {
 
   /* ================= AUTO-SELECT ONGOING SESSION ================= */
   useEffect(() => {
-    if (!activeSession) {
+    const checkSessions = async () => {
+      if (activeSession) return;
+
       if (sessions.length === 0) {
-        loadDashboard();
+        await loadDashboard();
+        // If still 0 after loading, show the modal
+        if (useAppStore.getState().sessions.length === 0) {
+          setShowDemoModal(true);
+        }
       } else {
         const ongoing = sessions.find(s => s.status === "ongoing");
         if (ongoing) {
@@ -77,8 +83,10 @@ const TrainingData = () => {
           setShowDemoModal(true);
         }
       }
-    }
-  }, [activeSession, sessions, loadDashboard, setActiveSession]);
+    };
+
+    checkSessions();
+  }, [activeSession, sessions.length, loadDashboard, setActiveSession]);
 
   /* ================= INIT DATA ================= */
   useEffect(() => {
