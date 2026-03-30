@@ -1,106 +1,80 @@
-import React from "react";
-import useAppStore from "../store/useAppStore";
-import { CheckCircle2, AlertCircle, PlayCircle, Clock } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import useAppStore from "../store/useAppStore";
+import {
+  HiOutlinePlay,
+  HiOutlineClipboardList,
+  HiOutlineChevronRight,
+  HiOutlineClock,
+  HiOutlineExclamationCircle,
+} from "react-icons/hi";
 
-const SessionList = ({ onSessionSelect }) => {
-  const { sessions, activeSession, setActiveSession } = useAppStore();
+const SessionList = () => {
   const navigate = useNavigate();
+  const { sessions, activeSession, setActiveSession, loadDashboard } = useAppStore();
+  const [filter, setFilter] = useState("all");
 
-  // Sort by time
-  const sortedSessions = [...sessions].sort((a, b) => {
-    const parseTime = (t) => {
-      const [time, modifier] = t.split(" ");
-      let [hours, minutes] = time.split(":");
-      if (hours === "12") hours = "00";
-      if (modifier === "PM") hours = parseInt(hours, 10) + 12;
-      return parseInt(hours) * 60 + parseInt(minutes);
-    };
-    return parseTime(a.startTime) - parseTime(b.startTime);
-  });
-
-  const getStatusDisplay = (session) => {
-    const isCompleted = session.status === "completed";
-    const isOngoing = session.status === "ongoing";
-    const isUpcoming = session.status === "upcoming";
-    const needsAction = isCompleted && !session.debriefSummary;
-
-    if (needsAction) {
-      return (
-        <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-full border border-amber-100" title="Action Required">
-          <AlertCircle size={10} className="text-amber-600" />
-          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tight">Action Required</span>
-        </div>
-      );
+  useEffect(() => {
+    if (sessions.length === 0) {
+      loadDashboard();
     }
-    if (isCompleted) {
-      return (
-        <div className="flex items-center gap-1.5 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100" title="Completed">
-          <CheckCircle2 size={10} className="text-emerald-600" />
-          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Completed</span>
-        </div>
-      );
-    }
-    if (isOngoing) {
-      return (
-        <div className="flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded-full border border-red-100" title="Live">
-          <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <span className="text-[10px] font-bold text-red-600 uppercase tracking-tight">Live</span>
-        </div>
-      );
-    }
-    if (isUpcoming) {
-      return (
-        <div className="flex items-center gap-1.5 bg-blue-50/50 px-2 py-1 rounded-full border border-blue-100" title="Pending">
-          <Clock size={10} className="text-blue-700/80" />
-          <span className="text-[10px] font-bold text-blue-700/80 uppercase tracking-tight">Pending</span>
-        </div>
-      );
-    }
-    return null;
-  };
+  }, []);
 
   const handleAction = (session) => {
     const isCompleted = session.status === "completed";
     const isOngoing = session.status === "ongoing";
     const needsAction = isCompleted && !session.debriefSummary;
 
+    // Improved robust check for training types
+    const typeLower = (session.type || "").toLowerCase();
+    const isTrainingType = typeLower.includes("flight") || typeLower.includes("simulator");
+
     setActiveSession(session);
 
-    if (isOngoing) {
-      // Live session → go to training data grading
+    if (isOngoing || (isTrainingType && !isCompleted)) {
       navigate("/training");
     } else if (isCompleted || needsAction) {
-      // Completed / Action Required → go to logbook
-      navigate(`/logbook/${session.id}`);
+      navigate("/logbook");
     } else {
-      // Pending / Upcoming → open prep panel
-      onSessionSelect?.();
+      // For upcoming / ground sessions
+      const el = document.getElementById("prep-details");
+      if (el) el.scrollIntoView({ behavior: "smooth" });
     }
   };
 
-  const modeColor = (type) => {
-    if (type === "Simulator") return "bg-purple-50 text-purple-700";
-    if (type === "Class") return "bg-amber-50 text-amber-700";
-    return "bg-blue-50/50 text-blue-700/80";
-  };
+  const filteredSessions = sessions.filter((s) => {
+    if (filter === "all") return true;
+    if (filter === "ongoing") return s.status === "ongoing";
+    if (filter === "completed") return s.status === "completed";
+    if (filter === "pending") return s.status === "pending" || s.status === "upcoming";
+    return true;
+  });
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mt-6">
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-        <h2 className="text-xl font-semibold text-gray-900">
-          Today's Schedule
-        </h2>
-        <span className="text-sm text-gray-500">
-          {sortedSessions.length} sessions
-        </span>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <h2 className="font-bold text-gray-800">Today's Schedule</h2>
+        <div className="flex gap-2">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="text-xs bg-white border border-gray-200 rounded-md px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="all">All Sessions</option>
+            <option value="ongoing">Ongoing Only</option>
+            <option value="completed">Completed Only</option>
+            <option value="pending">Upcoming Only</option>
+          </select>
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            {filteredSessions.length} sessions
+          </span>
+        </div>
       </div>
 
-      <div className="overflow-x-auto w-full">
-        <div className="min-w-[1000px]">
-          {/* Column Titles Updated for larger status labels */}
-          <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-blue-50/50 border-b border-gray-200 text-sm font-bold uppercase tracking-wide text-gray-700 font-outfit">
+      <div className="overflow-x-auto">
+        <div className="min-w-[800px]">
+          {/* Header Row */}
+          <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
             <span>Time</span>
             <span>Mode</span>
             <span>Lesson</span>
@@ -109,51 +83,87 @@ const SessionList = ({ onSessionSelect }) => {
             <span>Status</span>
           </div>
 
+          {/* Table Body */}
           <div className="divide-y divide-gray-100">
-            {sortedSessions.length === 0 && (
-              <div className="p-6 text-center text-gray-400">
-                No sessions available for today
-              </div>
-            )}
+            {filteredSessions.length > 0 ? (
+              filteredSessions.map((session) => {
+                const isActive = activeSession?.id === session.id;
+                const isCompleted = session.status === "completed";
+                const isOngoing = session.status === "ongoing";
+                const needsAction = isCompleted && !session.debriefSummary;
 
-            {sortedSessions.map((session) => {
-              const isActive = activeSession?.id === session.id;
-
-              return (
-                <button
-                  key={session.id}
-                  onClick={() => handleAction(session)}
-                  className={`grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 transition ${isActive
+                return (
+                  <button
+                    key={session.id}
+                    onClick={() => handleAction(session)}
+                    className={`grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 transition ${isActive
                       ? "bg-blue-50/50 border-l-2 border-blue-700/50 shadow-sm"
                       : "hover:bg-gray-50"
-                    }`}
-                >
-                  <span className="text-sm text-gray-700 whitespace-nowrap">
-                    {session.startTime}–{session.endTime}
-                  </span>
+                      }`}
+                  >
+                    <span className="text-sm text-gray-700 whitespace-nowrap">
+                      {session.startTime}-{session.endTime}
+                    </span>
 
-                  <span className={`text-sm font-semibold px-3 py-1.5 rounded-md w-fit ${modeColor(session.type)}`}>
-                    {session.type}
-                  </span>
+                    <div className="flex items-center">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${session.type === "Ground School"
+                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                          : session.type === "Simulator"
+                            ? "bg-purple-50 text-purple-700 border-purple-100"
+                            : "bg-blue-50 text-blue-700 border-blue-100"
+                          }`}
+                      >
+                        {session.type}
+                      </span>
+                    </div>
 
-                  <span className="text-sm font-semibold text-gray-900 truncate">
-                    {(session.topic || "").replace(/\s*\(\d+m\)$/, "")}
-                  </span>
+                    <span className="text-sm font-bold text-blue-700 truncate">
+                      {session.topic}
+                    </span>
 
-                  <span className="text-sm text-gray-700 truncate">
-                    {session.trainee}
-                  </span>
+                    <span className="text-sm text-gray-600 truncate">
+                      {session.trainee}
+                    </span>
 
-                  <span className="text-sm text-gray-700 truncate">
-                    {session.resourceUsed}
-                  </span>
+                    <span className="text-sm text-gray-500 truncate">
+                      {session.resourceUsed}
+                    </span>
 
-                  <div className="flex justify-end pr-2 items-center h-full">
-                    {getStatusDisplay(session)}
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex items-center">
+                      <div
+                        className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded uppercase ${isOngoing
+                          ? "bg-blue-600 text-white"
+                          : needsAction
+                            ? "bg-amber-100 text-amber-700 border border-amber-200"
+                            : isCompleted
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                              : "bg-gray-100 text-gray-500 border border-gray-200"
+                          }`}
+                      >
+                        {isOngoing ? (
+                          <>
+                            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                            Live
+                          </>
+                        ) : needsAction ? (
+                          <>
+                            <HiOutlineExclamationCircle />
+                            Review
+                          </>
+                        ) : (
+                          session.status
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-6 py-12 text-center text-gray-400">
+                No sessions found for this filter.
+              </div>
+            )}
           </div>
         </div>
       </div>

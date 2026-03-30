@@ -37,54 +37,40 @@ function getResource(session) {
 // 🚀 MAIN FUNCTION
 export const getDashboardData = async () => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
+    const instructors = await prisma.instructor.findFirst();
     const sessions = await prisma.session.findMany({
-      where: {
-        start_time: {
-          gte: today,
-          lt: tomorrow,
-        },
-      },
       include: {
+        trainee: true,
         lessonPlan: {
           include: {
             objectives: true,
             exercises: true,
-          },
-        },
+          }
+        }
       },
+      orderBy: { id: 'desc' }
     });
 
-    // Fetch all training data for these sessions to check for debriefs
-    const trainingDataRecords = await prisma.trainingData.findMany({
+    // Fetch all grading results for these sessions
+    const sessionExercises = await prisma.sessionExercise.findMany({
       where: {
         session_id: { in: sessions.map(s => s.id) }
       }
     });
 
-    const trainees = await prisma.trainee.findMany();
-    const instructors = await prisma.instructor.findFirst();
-
     const result = sessions.map((s) => {
-      const trainee = trainees.find((t) => t.id === s.student_id);
-      const trainingData = trainingDataRecords.find((td) => td.session_id === s.id);
-
       return {
         id: s.id,
         topic: s.session_title,
         startTime: formatTime(s.start_time),
         endTime: formatTime(s.end_time),
-        type: s.training_type === "Ground_School" ? "Class" : (s.training_type || "Class").replace("_", " "),
+        type: s.training_type ? s.training_type.replace("_", " ") : "Flight",
 
         status: getStatus(s),
 
-        trainee: trainee?.name || "Unknown Trainee",
+        trainee: s.trainee?.name || "Trainee Name",
         resourceUsed: getResource(s),
-        debriefSummary: trainingData?.debrief_summary || null,
+        debriefSummary: null, // Logic for debrief can be added here later
 
         lessonPlan: s.lessonPlan
           ? {
@@ -92,13 +78,17 @@ export const getDashboardData = async () => {
               objectives: s.lessonPlan.objectives.map((o) => o.text),
               instructorNotes: s.lessonPlan.instructorNotes,
               expectedOutcome: s.lessonPlan.expectedOutcome,
-              exercises: s.lessonPlan.exercises.map((ex) => ({
-                id: ex.id,
-                name: ex.name,
-                type: ex.type,
-                completed: false,
-              })),
-
+              exercises: s.lessonPlan.exercises.map((ex) => {
+                // Attach the actual score from results table if available
+                const grade = sessionExercises.find(g => g.session_id === s.id && g.exercise_id === ex.id);
+                return {
+                  id: ex.id,
+                  name: ex.name,
+                  type: ex.type,
+                  score: grade?.score || 0,
+                  notes: grade?.notes || ""
+                };
+              }),
             }
           : null,
       };
@@ -106,13 +96,13 @@ export const getDashboardData = async () => {
 
     return {
       user: {
-        name: instructors?.name || "Instructor",
+        name: instructors?.name || "Capt. Morgan",
         role: instructors?.designation || "Senior Instructor",
       },
-      sessions: result, // Return all today's sessions
+      sessions: result,
     };
   } catch (err) {
-    console.error("Service Error:", err);
+    console.error("Dashboard Service Error:", err);
     throw err;
   }
 };

@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import useAppStore from "../store/useAppStore";
 import SessionList from "./Sessionlist";
 import SessionPreparationPanel from "./SessionPreparation";
@@ -12,6 +13,7 @@ import ErrorBoundary from "../ErrorBoundary";
  * - Provides quick navigation to live evaluation, logbooks, and prep panels.
  */
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { user, sessions, loadDashboard, setActiveSession } = useAppStore();
 
   useEffect(() => {
@@ -141,9 +143,13 @@ const Dashboard = () => {
               {nextSession ? (
                 <button
                   onClick={() => {
-                    console.log("Activating next session:", nextSession);
                     setActiveSession(nextSession);
-                    scrollToPrep();
+                    const typeLower = (nextSession.type || "").toLowerCase();
+                    if (typeLower.includes("flight") || typeLower.includes("simulator")) {
+                      navigate("/training");
+                    } else {
+                      scrollToPrep();
+                    }
                   }}
                   // Item style matched to SessionList active or row item
                   className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 hover:bg-gray-50 transition border-l-2 border-blue-600 bg-blue-50/30 group"

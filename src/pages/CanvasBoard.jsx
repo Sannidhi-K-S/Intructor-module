@@ -114,7 +114,40 @@ const CanvasBoard = ({
     canvas.on("object:modified", saveCanvas);
     canvas.on("object:removed", saveCanvas);
     canvas.on("text:changed", saveCanvas);
+    /* 🔥 AUTO EXPAND (INFINITE CANVAS) */
+    canvas.on("path:created", () => {
+      const container = containerRef.current;
+      if (!container) return;
 
+      setTimeout(() => {
+        const objects = canvas.getObjects();
+        if (!objects.length) return;
+
+        let maxY = 0;
+
+        objects.forEach(obj => {
+          obj.setCoords();
+
+          const bottom =
+            obj.aCoords?.bl?.y ||
+            (obj.top + (obj.height * (obj.scaleY || 1)));
+
+          if (bottom > maxY) maxY = bottom;
+        });
+
+        // Expand when drawing near bottom
+        if (maxY > canvas.height - 200) {
+          const newHeight = canvas.height + 600;
+
+          canvas.setDimensions({
+            width: canvas.width,
+            height: newHeight,
+          });
+
+          canvas.renderAll();
+        }
+      }, 120);
+    });
     return () => {
       window.removeEventListener("resize", resize);
       canvas.dispose();
@@ -131,6 +164,25 @@ const CanvasBoard = ({
 
     if (canvasData) {
       canvas.loadFromJSON(canvasData).then(() => {
+        let maxY = 600;
+
+        canvas.getObjects().forEach(obj => {
+          obj.setCoords();
+
+          const bottom =
+            obj.aCoords?.bl?.y ||
+            (obj.top + (obj.height * (obj.scaleY || 1)));
+
+          if (bottom > maxY) maxY = bottom;
+        });
+
+        if (maxY > 600) {
+          canvas.setDimensions({
+            width: containerRef.current?.clientWidth || canvas.width,
+            height: maxY + 300,
+          });
+        }
+
         canvas.renderAll();
         isInitializingRef.current = false;
         historyRef.current = [JSON.stringify(canvas.toJSON())];
@@ -222,7 +274,7 @@ const CanvasBoard = ({
         }
 
         const pointer = opt.scenePoint || (canvas.getPointer ? canvas.getPointer(opt.e) : { x: opt.e.offsetX, y: opt.e.offsetY });
-        
+
         // iPad Notes Style: Snap to left margin but keep the Y coordinate of the click
         const leftMargin = 120;
 
