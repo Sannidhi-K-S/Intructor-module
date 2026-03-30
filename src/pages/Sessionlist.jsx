@@ -52,8 +52,8 @@ const SessionList = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-        <h2 className="font-bold text-gray-800">Today's Schedule</h2>
+      <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 gap-4">
+        <h2 className="font-bold text-gray-800 text-xl">Today's Schedule</h2>
         <div className="flex gap-2">
           <select
             value={filter}
@@ -71,10 +71,10 @@ const SessionList = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[800px]">
+      <div className="w-full overflow-x-auto pb-2">
+        <div className="min-w-[950px]">
           {/* Header Row */}
-          <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+          <div className="grid grid-cols-[160px_120px_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px] gap-4 px-6 py-3 bg-slate-50 text-[14px] font-bold text-slate-500 uppercase tracking-wider border-b border-gray-100 font-outfit">
             <span>Time</span>
             <span>Mode</span>
             <span>Lesson</span>
@@ -96,43 +96,43 @@ const SessionList = () => {
                   <button
                     key={session.id}
                     onClick={() => handleAction(session)}
-                    className={`grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 transition ${isActive
-                      ? "bg-blue-50/50 border-l-2 border-blue-700/50 shadow-sm"
-                      : "hover:bg-gray-50"
+                    className={`grid grid-cols-[160px_120px_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px] gap-4 w-full text-left px-6 py-5 items-center transition ${isActive
+                      ? "bg-blue-50/50 border-l-2 border-blue-600 shadow-[inset_0_0_20px_rgba(6,81,237,0.03)]"
+                      : "hover:bg-blue-50/40 bg-white"
                       }`}
                   >
-                    <span className="text-sm text-gray-700 whitespace-nowrap">
+                    <span className="text-sm font-medium text-slate-700 whitespace-nowrap">
                       {session.startTime}-{session.endTime}
                     </span>
 
                     <div className="flex items-center">
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${session.type === "Ground School"
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                        className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase border ${session.type === "Ground School"
+                          ? "bg-blue-50 text-blue-700 border-transparent"
                           : session.type === "Simulator"
-                            ? "bg-purple-50 text-purple-700 border-purple-100"
-                            : "bg-blue-50 text-blue-700 border-blue-100"
+                            ? "bg-purple-50 text-purple-700 border-transparent"
+                            : "bg-blue-50 text-blue-700 border-transparent"
                           }`}
                       >
                         {session.type}
                       </span>
                     </div>
 
-                    <span className="text-sm font-bold text-blue-700 truncate">
+                    <span className="text-[14px] font-bold text-slate-900 break-words leading-tight group-hover:text-blue-700 transition-colors">
                       {session.topic}
                     </span>
 
-                    <span className="text-sm text-gray-600 truncate">
+                    <span className="text-[14px] text-slate-600 font-medium break-words leading-tight">
                       {session.trainee}
                     </span>
 
-                    <span className="text-sm text-gray-500 truncate">
+                    <span className="text-[14px] text-slate-600 font-medium break-words leading-tight">
                       {session.resourceUsed}
                     </span>
 
-                    <div className="flex items-center">
+                    <div className="flex justify-start items-center">
                       <div
-                        className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded uppercase ${isOngoing
+                        className={`flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded uppercase border ${isOngoing
                           ? "bg-blue-600 text-white"
                           : needsAction
                             ? "bg-amber-100 text-amber-700 border border-amber-200"

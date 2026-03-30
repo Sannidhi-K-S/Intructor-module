@@ -281,8 +281,7 @@ const History = () => {
 
                     {/* Tooltip implementation */}
                     {hoveredDay?.d === d && daySessions.length > 0 && (
-                        <div className="absolute top-10 left-10 z-[50] w-64 bg-slate-900 text-white rounded-xl p-4 shadow-2xl animate-in fade-in zoom-in duration-200 pointer-events-none">
-                            <p className="text-[10px] uppercase font-black tracking-widest text-blue-400 mb-3 border-b border-slate-800 pb-2">{dateStr}</p>
+                        <div className="absolute top-10 left-10 z-[50] w-64 bg-white text-gray-800 border border-gray-200 rounded-xl p-4 shadow-xl animate-in fade-in zoom-in duration-200 pointer-events-none">                            <p className="text-[10px] uppercase font-black tracking-widest text-blue-400 mb-3 border-b border-slate-800 pb-2">{dateStr}</p>
                             <div className="space-y-3">
                                 {daySessions.map(s => (
                                     <div key={s.id} className="border-l-2 border-slate-700 pl-3">

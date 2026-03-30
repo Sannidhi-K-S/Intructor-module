@@ -38,9 +38,10 @@ const Dashboard = () => {
 
   const pendingCounts = sessions.reduce((acc, s) => {
     if (s.status === "ongoing") acc.live++;
-    if (s.status === "completed" && !s.debriefSummary) acc.pending++;
+    if (s.status === "completed" && !s.debriefSummary) acc.actionRequired++;
+    if (s.status === "upcoming" || s.status === "pending") acc.upcoming++;
     return acc;
-  }, { live: 0, pending: 0 });
+  }, { live: 0, actionRequired: 0, upcoming: 0 });
 
   const scrollToPrep = () => {
     setTimeout(() => {
@@ -62,75 +63,94 @@ const Dashboard = () => {
       {/* 🔥 DASHBOARD HEADER & STATS */}
       <div className="space-y-1">
 
-        <div className="grid grid-cols-4 gap-2 md:gap-4 lg:gap-5 overflow-x-auto pb-2 scrollbar-none">
-          {/* Sessions Today */}
-          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-blue-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
-            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
-              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-blue-600 uppercase tracking-tighter md:tracking-wider">Sessions</span>
-              <div className="hidden xs:block p-1 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-blue-600" />
-              </div>
+        {/* SMALL, PERFECTLY ALIGNED INDIVIDUAL SAAS METRIC CARDS */}
+        <div className="flex flex-wrap lg:flex-nowrap gap-3 md:gap-4 w-full justify-between items-center mb-6">
+
+          {/* Total Sessions Card */}
+          <div className="flex-1 w-full min-w-[140px] bg-white border border-slate-200/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest font-outfit mb-0.5">Total</span>
+              <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{sessions.length}</span>
             </div>
-            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">{sessions.length}</span>
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
+            </div>
           </div>
 
-          {/* Live Sessions */}
-          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-red-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
-            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
-              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-red-500 uppercase tracking-tighter md:tracking-wider flex items-center gap-0.5">
+          {/* Upcoming Sessions Card */}
+          <div className="flex-1 w-full min-w-[140px] bg-white border border-slate-200/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-purple-600 uppercase tracking-widest font-outfit mb-0.5">Upcoming</span>
+              <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{pendingCounts.upcoming}</span>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Clock className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
+            </div>
+          </div>
+
+          {/* Live Sessions Card */}
+          <div className="flex-1 w-full min-w-[140px] bg-white border border-slate-200/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-red-500 uppercase tracking-widest font-outfit flex items-center gap-1.5 mb-0.5">
                 Live
-                {pendingCounts.live > 0 && <span className="w-1 h-1 rounded-full bg-red-500 animate-pulse" />}
+                {pendingCounts.live > 0 && (
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                  </span>
+                )}
               </span>
-              <div className="hidden xs:block p-1 bg-red-50 rounded-lg group-hover:bg-red-100 transition-colors">
-                <Activity className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-red-500" />
-              </div>
+              <span className={`text-2xl font-extrabold tracking-tight ${pendingCounts.live > 0 ? "text-red-600" : "text-slate-900"}`}>
+                {pendingCounts.live}
+              </span>
             </div>
-            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
-              {pendingCounts.live}
-            </span>
+            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Activity className="w-4 h-4 md:w-5 md:h-5 text-red-500" />
+            </div>
           </div>
 
-          {/* Pending Sessions */}
-          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-amber-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
-            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
-              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-amber-500 uppercase tracking-tighter md:tracking-wider">Pending</span>
-              <div className="hidden xs:block p-1 bg-amber-50 rounded-lg group-hover:bg-amber-100 transition-colors">
-                <AlertCircle className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-amber-500" />
-              </div>
+          {/* Action Required Card */}
+          <div className="flex-1 w-full min-w-[140px] bg-white border border-slate-200/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-amber-500 uppercase tracking-widest font-outfit mb-0.5 whitespace-nowrap">Action</span>
+              <span className={`text-2xl font-extrabold tracking-tight ${pendingCounts.actionRequired > 0 ? "text-amber-600" : "text-slate-900"}`}>
+                {pendingCounts.actionRequired}
+              </span>
             </div>
-            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
-              {pendingCounts.pending}
-            </span>
+            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-amber-500" />
+            </div>
           </div>
 
-          {/* Completed Sessions */}
-          <div className="min-w-[85px] bg-white p-2 md:p-3 lg:p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-emerald-200 transition-all duration-300 flex flex-col justify-center relative group cursor-default">
-            <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
-              <span className="text-[8px] md:text-[10px] lg:text-[11px] font-bold text-emerald-500 uppercase tracking-tighter md:tracking-wider font-outfit">Done</span>
-              <div className="hidden xs:block p-1 bg-emerald-50 rounded-lg group-hover:bg-emerald-100 transition-colors">
-                <CheckCircle className="w-3 h-3 md:w-3.5 md:h-3.5 lg:w-[16px] lg:h-[16px] text-emerald-500" />
-              </div>
+          {/* Completed Sessions Card */}
+          <div className="flex-1 w-full min-w-[140px] bg-white border border-slate-200/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-widest font-outfit mb-0.5">Done</span>
+              <span className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                {sessions.filter(s => s.status === "completed").length}
+              </span>
             </div>
-            <span className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 tracking-tight">
-              {sessions.filter(s => s.status === "completed").length}
-            </span>
+            <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />
+            </div>
           </div>
+
         </div>
       </div>
 
       {/* 2. UPCOMING SESSIONS (Next Seq) - Styled exactly like Today's List */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-blue-600 flex items-center gap-2">
+      <div className="bg-white border border-gray-200/80 rounded-2xl shadow-sm overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-gray-100 bg-white flex justify-between items-center">
+          <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
             <Clock size={18} className="text-blue-600" />
             Upcoming Session
           </h2>
         </div>
 
         <div className="overflow-x-auto w-full">
-          <div className="min-w-[1000px]">
-            {/* Column Titles matched to SessionList */}
-            <div className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 px-6 py-3 bg-blue-50 border-b border-gray-200 text-sm font-bold uppercase tracking-wide text-gray-700 font-outfit">
+          <div className="min-w-[950px]">
+            {/* Column Titles matched to SessionList - ALWAYS VISIBLE ALIGNMENT */}
+            <div className="grid grid-cols-[160px_120px_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px] gap-4 px-6 py-3 bg-slate-50 border-b border-gray-100 text-[14px] font-bold uppercase tracking-wider text-slate-500 font-outfit">
               <span>Time</span>
               <span>Mode</span>
               <span>Lesson</span>
@@ -151,40 +171,41 @@ const Dashboard = () => {
                       scrollToPrep();
                     }
                   }}
-                  // Item style matched to SessionList active or row item
-                  className="grid grid-cols-[170px_150px_2.5fr_1.5fr_1.5fr_120px] gap-4 w-full text-left px-6 py-5 hover:bg-gray-50 transition border-l-2 border-blue-600 bg-blue-50/30 group"
+                  className="grid grid-cols-[160px_120px_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px] gap-4 w-full text-left px-6 py-5 hover:bg-blue-50/40 transition border-l-2 border-blue-600 bg-white group items-center"
                 >
-                  <span className="text-sm text-gray-700 font-medium whitespace-nowrap">
+                  <span className="text-sm font-medium text-slate-700 whitespace-nowrap">
                     {nextSession.startTime}–{nextSession.endTime}
                   </span>
 
-                  <span className={`text-sm font-semibold px-3 py-1.5 rounded-md w-fit ${modeColor(nextSession.type)} shadow-sm`}>
-                    {nextSession.type}
-                  </span>
+                  <div className="flex items-center">
+                    <span className={`text-[11px] font-bold px-3 py-1 rounded-full uppercase border ${modeColor(nextSession.type)}`}>
+                      {nextSession.type}
+                    </span>
+                  </div>
 
-                  <span className="text-sm font-bold text-gray-900 truncate group-hover:text-blue-700 transition-colors">
+                  <span className="text-[14px] font-bold text-slate-900 break-words leading-tight group-hover:text-blue-700 transition-colors">
                     {(nextSession.topic || "").replace(/\s*\(\d+m\)$/, "")}
                   </span>
 
-                  <span className="text-sm text-gray-700 font-medium truncate">
+                  <span className="text-[14px] text-slate-600 font-medium break-words leading-tight">
                     {nextSession.trainee}
                   </span>
 
-                  <span className="text-sm text-gray-700 font-medium truncate">
+                  <span className="text-[14px] text-slate-600 font-medium break-words leading-tight">
                     {nextSession.resourceUsed}
                   </span>
 
-                  <div className="flex justify-end pr-2 items-center">
-                    <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                      <Clock size={10} className="text-blue-700" />
-                      <span className="text-[10px] font-bold text-blue-700 uppercase tracking-tight">Pending</span>
+                  <div className="flex justify-start items-center">
+                    <div className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded border border-blue-100/50">
+                      <Clock size={12} className="text-blue-700" />
+                      <span className="text-[11px] font-bold text-blue-700 uppercase tracking-tight">Pending</span>
                     </div>
                   </div>
                 </button>
               ) : (
-                <div className="p-10 text-center text-gray-400 font-medium flex flex-col items-center gap-2">
-                  <Clock size={24} className="text-gray-200" />
-                  No upcoming sessions
+                <div className="px-6 py-10 text-center text-slate-400 font-medium flex flex-col items-center justify-center gap-2 bg-slate-50/50">
+                  <Clock size={22} className="text-slate-300" />
+                  <span className="text-[14px] font-medium text-slate-500">No upcoming sessions right now</span>
                 </div>
               )}
             </div>
