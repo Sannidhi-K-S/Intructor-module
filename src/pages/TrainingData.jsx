@@ -47,52 +47,53 @@ const TrainingData = () => {
   const [toastMessage, setToastMessage] = useState("");
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
-  const { activeSession } = useAppStore();
+  const { activeSession, sessions, loadDashboard, setActiveSession } = useAppStore();
 
   const INSTRUCTOR_HAS_ACTIVE_SESSION = !!activeSession;
   const ACTIVE_SESSION_TYPE = activeSession?.type || "flight";
 
   const current = exercises.length > 0 ? exercises[activeExercise] : null;
 
+  /* ================= AUTO-SELECT ONGOING SESSION ================= */
+  useEffect(() => {
+    if (!activeSession) {
+      if (sessions.length === 0) {
+        loadDashboard();
+      } else {
+        const ongoing = sessions.find(s => s.status === "ongoing");
+        if (ongoing) {
+          setActiveSession(ongoing);
+        }
+      }
+    }
+  }, [activeSession, sessions, loadDashboard, setActiveSession]);
+
   /* ================= SESSION & DB EXERCISES ================= */
 
   useEffect(() => {
-    let currentSessionId = localStorage.getItem("session_id");
-
     const initializePage = async () => {
+      if (!activeSession) return;
+      
+      setLoading(true);
       try {
-        setLoading(true);
-
-        const exRes = await fetch("http://localhost:5000/exercises");
-        if (!exRes.ok) throw new Error("DB Connection Error");
-
-        const exData = await exRes.json();
+        setSessionId(activeSession.id);
         
-        if (!exData || exData.length === 0) {
-          throw new Error("No exercises found in DB");
-        }
-
-        const formattedExercises = exData.map(ex => ({
-          id: ex.id,
-          name: ex.name,
-          score: 0,
-          canvasData: null
-        }));
-        
-        setExercises(formattedExercises);
-
-        if (currentSessionId) {
-          setSessionId(Number(currentSessionId));
+        // If the session has a lesson plan with exercises, use those
+        if (activeSession.lessonPlan?.exercises?.length > 0) {
+          const formattedExercises = activeSession.lessonPlan.exercises.map(ex => ({
+            id: ex.id,
+            name: ex.name,
+            type: ex.type,
+            score: 0,
+            canvasData: null
+          }));
+          setExercises(formattedExercises);
         } else {
-          const sessRes = await fetch("http://localhost:5000/create-session", { method: "POST" });
-          const sessData = await sessRes.json();
-          if (sessData && sessData.session_id) {
-            setSessionId(sessData.session_id);
-            localStorage.setItem("session_id", sessData.session_id);
-          }
+          // Fallback if no exercises are assigned to the lesson plan
+          setExercises(fallbackExercises);
         }
       } catch (err) {
-        setToastMessage("Still not connected to DB - using demo data.");
+        setToastMessage("Failed to load exercises for this session.");
         setExercises(fallbackExercises);
         setTimeout(() => setToastMessage(""), 4500);
       } finally {
@@ -101,7 +102,7 @@ const TrainingData = () => {
     };
 
     initializePage();
-  }, []);
+  }, [activeSession]);
 
   useEffect(() => {
     latestExercisesRef.current = exercises;
@@ -151,14 +152,32 @@ const TrainingData = () => {
     setActiveExercise(index);
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     saveToBackend(latestExercisesRef.current?.[activeExercise] || current);
+    
+    // Save to the new schema
+    try {
+      await fetch("http://localhost:5000/api/sessions/save-scores", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          sessionId: sessionId, 
+          exercises: latestExercisesRef.current || exercises,
+          overallNotes: "Session completed by instructor"
+        }),
+      });
+    } catch (err) {
+      console.error("Failed saving to metrics schema", err);
+    }
+
+    // Original final grade logic
     fetch("http://localhost:5000/save-final-grade", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId }),
     });
-    navigate("/");
+
+    navigate(`/reports/${sessionId}`);
   };
 
   /* ================= UI GUARDS ================= */
@@ -209,10 +228,13 @@ const TrainingData = () => {
           <button onClick={() => navigate(-1)} className="back-btn flex items-center gap-1 mb-3 text-slate-500">
             <HiOutlineChevronLeft /> Back
           </button>
-          <h1 className="training-title mb-2">Advanced Instrument Approaches</h1>
+          <h1 className="training-title mb-2">
+            {activeSession?.lessonPlan?.topic || activeSession?.topic || "Flight Training"}
+          </h1>
           <div className="training-meta mt-2 mb-2">
             <span>SESSION ID: {activeSession?.id || "SESS-001"}</span>
-            <span className="highlight uppercase">{ACTIVE_SESSION_TYPE} SESSION</span>
+            <span className="ml-4">TRAINEE: <strong className="text-gray-800">{activeSession?.trainee}</strong></span>
+            <span className="highlight uppercase ml-4">{ACTIVE_SESSION_TYPE} SESSION</span>
           </div>
         </div>
         <div className="flex gap-3">

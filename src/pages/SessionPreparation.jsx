@@ -20,22 +20,9 @@ const SessionPreparationPanel = ({ mode }) => {
   const { activeSession } = useAppStore();
   const navigate = useNavigate();
 
-  if (!activeSession) {
-    return (
-      <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center shadow-sm">
-        <p className="text-gray-400 font-medium whitespace-nowrap">
-          Select a session to view preparation details
-        </p>
-      </div>
-    );
-  }
-
-  const { lessonPlan } = activeSession;
-  const isViewOnly = mode === "view-only";
-
   // 🧠 Check if it's too early to start (Disable button if now < startTime)
   const isTooEarly = React.useMemo(() => {
-    if (!activeSession?.startTime || !activeSession.startTime.includes(" ")) return false;
+    if (!activeSession?.startTime || typeof activeSession.startTime !== 'string' || !activeSession.startTime.includes(" ")) return false;
     
     try {
       const now = new Date();
@@ -54,6 +41,19 @@ const SessionPreparationPanel = ({ mode }) => {
       return false;
     }
   }, [activeSession]);
+
+  if (!activeSession) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center shadow-sm">
+        <p className="text-gray-400 font-medium whitespace-nowrap">
+          Select a session to view preparation details
+        </p>
+      </div>
+    );
+  }
+
+  const { lessonPlan } = activeSession;
+  const isViewOnly = mode === "view-only";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col overflow-hidden">
@@ -75,18 +75,26 @@ const SessionPreparationPanel = ({ mode }) => {
         </div>
 
         {!isViewOnly && (
-          <button
-            onClick={() => !isTooEarly && navigate("/training")}
-            disabled={isTooEarly}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition shadow-md ${
-              isTooEarly 
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200" 
-                : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg active:scale-95"
-            }`}
-          >
-            <Zap size={18} fill={isTooEarly ? "none" : "currentColor"} className={isTooEarly ? "text-gray-300" : ""} />
-            Start Training
-          </button>
+          <div className="flex items-center gap-3">
+            {activeSession.status === 'ongoing' && (
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-red-600 bg-red-50 border border-red-100 px-3 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                LIVE
+              </span>
+            )}
+            <button
+              onClick={() => navigate("/training")}
+              disabled={isTooEarly}
+              className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition shadow-md ${
+                isTooEarly
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                  : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg active:scale-95"
+              }`}
+            >
+              <Zap size={18} fill={isTooEarly ? "none" : "currentColor"} className={isTooEarly ? "text-gray-300" : ""} />
+              {activeSession.status === 'ongoing' ? 'Continue Training' : 'Start Training'}
+            </button>
+          </div>
         )}
       </div>
 

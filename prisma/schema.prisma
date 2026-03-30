@@ -8,27 +8,26 @@ datasource db {
 }
 
 model Session {
-  id             Int      @id @default(autoincrement())
-  session_title  String
+  id            Int    @id @default(autoincrement())
+  session_title String
 
-  instructor_id  Int
-  student_id     String   // ✅ FIX (must match Trainee.id type)
+  instructor_id Int
+  student_id    String
 
-  aircraft_id    Int?
-  simulator_id   Int?
+  aircraft_id  Int?
+  simulator_id Int?
 
-  training_type  TrainingType?
+  training_type TrainingType?
 
   lesson_plan_id Int?
 
-  start_time     DateTime
-  end_time       DateTime
-  notes          String?
+  start_time DateTime
+  end_time   DateTime
+  notes      String?
 
-  created_at     DateTime @default(now())
+  created_at DateTime @default(now())
 
-  // ✅ RELATIONS
-  lessonPlan     LessonPlan? @relation(fields: [lesson_plan_id], references: [id])
+  lessonPlan         LessonPlan?          @relation(fields: [lesson_plan_id], references: [id])
 }
 
 enum TrainingType {
@@ -38,17 +37,17 @@ enum TrainingType {
 }
 
 model LessonPlan {
-  id               Int      @id @default(autoincrement())
-  topic            String
-  instructorNotes  String?
-  expectedOutcome  String?
+  id              Int     @id @default(autoincrement())
+  topic           String
+  instructorNotes String?
+  expectedOutcome String?
 
-  created_at       DateTime @default(now())
+  created_at DateTime @default(now())
 
-  // ✅ RELATIONS
-  sessions         Session[]
-  objectives       LessonObjective[]
-  exercises        Exercise[]
+  // RELATIONS
+  sessions   Session[]
+  objectives LessonObjective[]
+  exercises  Exercise[]
 }
 
 model LessonObjective {
@@ -56,82 +55,82 @@ model LessonObjective {
   lesson_plan_id Int
   text           String
 
-  lessonPlan     LessonPlan @relation(fields: [lesson_plan_id], references: [id])
+  lessonPlan LessonPlan @relation(fields: [lesson_plan_id], references: [id])
 }
 
 model Exercise {
-  id             Int    @id @default(autoincrement())
+  id             Int     @id @default(autoincrement())
   lesson_plan_id Int
   name           String
   type           String?
 
-  lessonPlan     LessonPlan @relation(fields: [lesson_plan_id], references: [id])
+  lessonPlan LessonPlan @relation(fields: [lesson_plan_id], references: [id])
 }
 
 model Trainee {
-  id              String   @id @default(uuid())
-  traineeId       String
-  name            String
-  email           String
-  phone           String?
-  dob             DateTime?
-  enrollmentDate  DateTime
-  course          String?
-  licenseType     String?
-  status          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(uuid())
+  traineeId      String
+  name           String
+  email          String
+  phone          String?
+  dob            DateTime?
+  enrollmentDate DateTime
+  course         String?
+  licenseType    String?
+  status         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model Instructor {
-  id           Int      @id @default(autoincrement())
-  instructorId String   @unique @default("INST-001")
+  id           Int     @id @default(autoincrement())
+  instructorId String  @unique @default("INST-001")
   name         String
-  email        String   @unique
+  email        String  @unique
   phone        String?
-  designation  String   // e.g., "Senior Flight Instructor"
-  
-  status       String?  // active/inactive (optional)
+  designation  String // e.g., "Senior Flight Instructor"
 
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  status String? // active/inactive (optional)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 }
 
 model TrainingData {
-  id                 Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  session_id         Int      
+  session_id Int
 
-  mode               String?
-  topic              String?
+  mode  String?
+  topic String?
 
-  instructor_id      Int
-  resource_id        String?
-  traineeId          String
+  instructor_id Int
+  resource_id   String?
+  traineeId     String
 
   debrief_summary    String?
   additional_remarks String?
-  session_outcome    String?   
+  session_outcome    String?
 
-  created_at         DateTime @default(now())
+  created_at DateTime @default(now())
 
-  exercises          SessionExercise[]
+  exercises SessionExercise[]
 }
 
 model SessionExercise {
-  id              Int     @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  training_id     Int
+  training_id Int
 
-  exercise_name   String
-  exercise_type   String
+  exercise_name String
+  exercise_type String
 
-  score           Float
-  completed       Boolean @default(false)
+  score     Float
+  completed Boolean @default(false)
 
-  notes           String?
+  notes String?
 
-  created_at      DateTime @default(now())
+  created_at DateTime @default(now())
 
-  training        TrainingData @relation(fields: [training_id], references: [id])
+  training TrainingData @relation(fields: [training_id], references: [id])
 }

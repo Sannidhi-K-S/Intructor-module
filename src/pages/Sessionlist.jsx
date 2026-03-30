@@ -68,10 +68,13 @@ const SessionList = ({ onSessionSelect }) => {
     setActiveSession(session);
 
     if (isOngoing) {
+      // Live session → go to training data grading
       navigate("/training");
     } else if (isCompleted || needsAction) {
+      // Completed / Action Required → go to logbook
       navigate(`/logbook/${session.id}`);
     } else {
+      // Pending / Upcoming → open prep panel
       onSessionSelect?.();
     }
   };

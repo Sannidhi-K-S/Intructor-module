@@ -3,6 +3,7 @@ import useAppStore from "../store/useAppStore";
 import SessionList from "./Sessionlist";
 import SessionPreparationPanel from "./SessionPreparation";
 import { Plane, AlertCircle, Clock, FileText, User, Calendar, Activity, CheckCircle } from "lucide-react";
+import ErrorBoundary from "../ErrorBoundary";
 
 /**
  * Instructor Dashboard
@@ -192,7 +193,9 @@ const Dashboard = () => {
 
         {/* Preparation Workspace (Active session detail loader) */}
         <div id="session-prep-area" className="scroll-m-8">
-          <SessionPreparationPanel />
+          <ErrorBoundary>
+            <SessionPreparationPanel />
+          </ErrorBoundary>
         </div>
       </div>
     </div>
