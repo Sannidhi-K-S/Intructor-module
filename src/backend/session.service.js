@@ -63,6 +63,9 @@ export const getDashboardData = async () => {
     const trainingDataRecords = await prisma.trainingData.findMany({
       where: {
         session_id: { in: sessions.map(s => s.id) }
+      },
+      include: {
+        exercises: true
       }
     });
 
@@ -92,12 +95,18 @@ export const getDashboardData = async () => {
               objectives: s.lessonPlan.objectives.map((o) => o.text),
               instructorNotes: s.lessonPlan.instructorNotes,
               expectedOutcome: s.lessonPlan.expectedOutcome,
-              exercises: s.lessonPlan.exercises.map((ex) => ({
-                id: ex.id,
-                name: ex.name,
-                type: ex.type,
-                completed: false,
-              })),
+              exercises: s.lessonPlan.exercises.map((ex) => {
+                const saved = trainingData?.exercises?.find(se => se.exercise_id === ex.id || se.exercise_name === ex.name);
+                return {
+                  id: ex.id,
+                  name: ex.name,
+                  type: ex.type,
+                  score: saved?.score || 0,
+                  canvasData: saved?.canvas_data ? JSON.parse(saved.canvas_data) : null,
+                  notes: saved?.notes || "",
+                  completed: saved?.completed || false,
+                };
+              }),
 
             }
           : null,
@@ -220,6 +229,76 @@ export const fetchReportData = async (sessionId) => {
     };
   } catch (err) {
     console.error("Fetch Report Data Error:", err);
+    throw err;
+  }
+};
+
+export const upsertExerciseDetail = async (sessionId, exerciseId, data) => {
+  try {
+    const sessionRecord = await prisma.session.findUnique({ where: { id: Number(sessionId) } });
+    if (!sessionRecord) throw new Error("Session not found");
+
+    let trainingRecord = await prisma.trainingData.findUnique({
+      where: { session_id: Number(sessionId) }
+    });
+
+    if (!trainingRecord) {
+      trainingRecord = await prisma.trainingData.create({
+        data: {
+          session_id: Number(sessionId),
+          traineeId: sessionRecord.student_id,
+          instructor_id: sessionRecord.instructor_id,
+          topic: sessionRecord.session_title,
+        }
+      });
+    }
+
+    const savedExercise = await prisma.sessionExercise.findFirst({
+      where: {
+        training_id: trainingRecord.id,
+        OR: [
+          { exercise_id: Number(exerciseId) },
+          { exercise_name: data.name }
+        ]
+      }
+    });
+
+    console.log("Upserting Exercise Detail for session", sessionId, "ex", exerciseId);
+    console.log("Received canvas_data length:", data.canvas_data ? JSON.stringify(data.canvas_data).length : "null");
+
+    const exerciseInfo = {
+      training_id: trainingRecord.id,
+      exercise_id: Number(exerciseId),
+      exercise_name: data.name || "Unknown Exercise",
+      exercise_type: data.type || "General",
+      score: Number(data.score) || 0,
+      canvas_data: data.canvas_data ? JSON.stringify(data.canvas_data) : null,
+      notes: data.notes || null,
+      completed: true,
+    };
+
+
+    if (savedExercise) {
+      return await prisma.sessionExercise.update({
+        where: { id: savedExercise.id },
+        data: exerciseInfo
+      });
+    } else {
+      return await prisma.sessionExercise.create({
+        data: exerciseInfo
+      });
+    }
+  } catch (err) {
+    console.error("Upsert Exercise Detail Error:", err);
+    throw err;
+  }
+};
+
+export const getAllExercises = async () => {
+  try {
+    return await prisma.exercise.findMany();
+  } catch (err) {
+    console.error("Get All Exercises Error:", err);
     throw err;
   }
 };
