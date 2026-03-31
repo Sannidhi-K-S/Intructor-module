@@ -269,8 +269,8 @@ const TrainingData = () => {
   return (
     <div className="training-container container-app section-stack">
       {isDemoMode && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] bg-blue-600 text-white px-6 py-3 rounded-full shadow-2xl animate-in font-bold">
-          🚀 Running in Demo Mode
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] bg-blue-600/90 backdrop-blur-sm text-white px-4 py-1 rounded-full shadow-lg animate-in font-bold text-xs border border-white/20">
+          🚀 Demo Mode
         </div>
       )}
 
@@ -371,7 +371,7 @@ const TrainingData = () => {
           />
 
 
-          <div className="flex gap-4 items-center mt-6">
+          <div className="flex justify-between items-center mt-6">
             <button
               onClick={() => { if (activeExercise > 0) handleExerciseChange(activeExercise - 1); }}
               disabled={activeExercise === 0}
@@ -392,7 +392,7 @@ const TrainingData = () => {
                 onClick={() => { handleExerciseChange(activeExercise + 1); }}
                 className="bg-blue-600 text-white px-8 py-2 rounded-lg shadow-lg shadow-blue-200 hover:bg-blue-700 active:scale-95 transition-all font-bold"
               >
-                Next Exercise →
+                Next →
               </button>
             )}
           </div>

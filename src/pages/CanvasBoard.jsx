@@ -45,6 +45,8 @@ const CanvasBoard = ({
   const [selectedText, setSelectedText] = useState(null);
   const [textBarPos, setTextBarPos] = useState({ top: 0, left: 0 });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [sizePickerOpen, setSizePickerOpen] = useState(false);
+  const penSizes = [2, 4, 8, 12, 18];
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -68,6 +70,7 @@ const CanvasBoard = ({
     const close = (e) => {
       if (!e.target.closest(".toolbox")) {
         setToolOpen(false);
+        setSizePickerOpen(false);
       }
     };
     window.addEventListener("click", close);
@@ -251,12 +254,18 @@ const CanvasBoard = ({
       const brush = new PencilBrush(canvas);
       brush.color = penColor;
       brush.width = size;
+      brush.strokeLineCap = "round";
+      brush.strokeLineJoin = "round";
+      brush.decimate = 2.5; // Slightly more decimation for smoother curves
       canvas.freeDrawingBrush = brush;
     } else if (activeTool === "highlight") {
       canvas.isDrawingMode = true;
       const brush = new PencilBrush(canvas);
       brush.color = highlightColor;
       brush.width = size * 4;
+      brush.strokeLineCap = "round";
+      brush.strokeLineJoin = "round";
+      brush.decimate = 2.5;
       canvas.freeDrawingBrush = brush;
     } else if (activeTool === "pan") {
       canvas.isDrawingMode = false;
@@ -396,7 +405,11 @@ const CanvasBoard = ({
                 {tools.map(t => (
                   <button
                     key={t}
-                    onClick={(e) => { e.stopPropagation(); setActiveTool(t); }}
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      setActiveTool(t); 
+                      setSizePickerOpen(false);
+                    }}
                     className={`w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all ${activeTool === t ? "bg-[#1e2a44] text-white" : "text-white hover:bg-white/10"}`}
                   >
                     {t === "pen" && <Pen size={isMobile ? 16 : 20} />}
@@ -409,30 +422,56 @@ const CanvasBoard = ({
                 ))}
               </div>
 
-              {/* COLORS */}
-              {(activeTool === "pen" || activeTool === "text") && (
-                <div className="flex items-center gap-1.5 md:gap-2 border-r border-white/20 pr-2 md:pr-4">
-                  {penColors.map(c => (
+              {/* COLORS & SIZE PICKER */}
+              {(activeTool === "pen" || activeTool === "text" || activeTool === "highlight") && (
+                <div className="relative flex items-center gap-1.5 md:gap-2 border-r border-white/20 pr-2 md:pr-4">
+                  {(activeTool === "highlight" ? highlightColors : penColors).map(c => (
                     <button
                       key={c}
-                      onClick={(e) => { e.stopPropagation(); setPenColor(c); }}
-                      className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-white/40"
-                      style={{ background: c, transform: penColor === c ? 'scale(1.2)' : 'none' }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (activeTool === "highlight") setHighlightColor(c);
+                        else setPenColor(c);
+                        if (activeTool !== "text") setSizePickerOpen(!sizePickerOpen);
+                      }}
+                      className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-white/40 hover:scale-110 transition-transform shadow-sm"
+                      style={{ background: c, transform: (activeTool === "highlight" ? highlightColor : penColor) === c ? 'scale(1.2)' : 'none' }}
                     />
                   ))}
-                </div>
-              )}
 
-              {activeTool === "highlight" && (
-                <div className="flex items-center gap-1.5 md:gap-2 border-r border-white/20 pr-2 md:pr-4">
-                  {highlightColors.map(c => (
-                    <button
-                      key={c}
-                      onClick={(e) => { e.stopPropagation(); setHighlightColor(c); }}
-                      className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-white/40"
-                      style={{ background: c, transform: highlightColor === c ? 'scale(1.2)' : 'none' }}
-                    />
-                  ))}
+                  {sizePickerOpen && activeTool !== "text" && (
+                    <div className="absolute top-[calc(100%+8px)] right-0 bg-white/95 backdrop-blur-xl rounded-xl shadow-[0_15px_30px_rgba(0,0,0,0.2)] border border-slate-200/40 p-2.5 flex flex-col gap-2.5 min-w-[130px] animate-in zoom-in-95 origin-top-right z-[50]">
+                      <div className="text-[9px] uppercase tracking-widest text-slate-400 font-black px-1 text-center border-b border-slate-100 pb-1.5">
+                        {size}PX
+                      </div>
+                      <div className="flex items-center justify-between gap-0.5">
+                        {penSizes.map(s => (
+                          <button
+                            key={s}
+                            onClick={(e) => { e.stopPropagation(); setSize(s); setSizePickerOpen(false); }}
+                            className={`group relative flex flex-col items-center justify-center p-1.5 rounded-lg transition-all ${size === s ? "bg-blue-50/50 ring-1 ring-blue-100/50" : "hover:bg-slate-50"}`}
+                          >
+                            <div className="w-6 h-8 flex items-center justify-center">
+                              <svg width="20" height="28" viewBox="0 0 24 32" fill="none" className="transition-transform duration-300 group-hover:scale-105">
+                                <path 
+                                  d="M4 28C6 24 18 12 20 4" 
+                                  stroke={size === s ? (activeTool === 'highlight' ? 'rgb(59 130 246)' : penColor) : '#cbd5e1'} 
+                                  strokeWidth={s/1.8} 
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  style={{ 
+                                    opacity: activeTool === 'highlight' ? 0.6 : 1,
+                                    filter: size === s ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.08))' : 'none'
+                                  }}
+                                />
+                              </svg>
+                            </div>
+                            <span className={`text-[8px] mt-0.5 font-black ${size === s ? "text-blue-600" : "text-slate-400"}`}>{s}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
