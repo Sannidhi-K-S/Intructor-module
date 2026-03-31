@@ -5,6 +5,8 @@ import History from "./pages/History";
 import TrainingData from "./pages/TrainingData";
 
 import ReportsPage from "./pages/ReportsPage";
+import Reports from "./pages/Reports";
+import TrainingLog from "./pages/TrainingLog";
 
 function App() {
   return (

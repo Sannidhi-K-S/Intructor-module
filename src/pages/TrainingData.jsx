@@ -121,7 +121,8 @@ const TrainingData = () => {
           name: ex.name || ex.exercise_name,
           type: ex.type || ex.exercise_type,
           score: ex.score || 0,
-          canvasData: ex.canvasData || null
+          canvasData: ex.canvasData || null,
+          notes: ex.notes || ""
         })));
 
         if (isDemoMode) {
@@ -192,6 +193,15 @@ const TrainingData = () => {
       const updated = [...prev];
       updated[activeExercise].canvasData = data;
       updateActiveSessionExercise(updated[activeExercise].id, { canvasData: data });
+      return updated;
+    });
+  };
+
+  const updateNotes = (val) => {
+    setExercises(prev => {
+      const updated = [...prev];
+      updated[activeExercise].notes = val;
+      updateActiveSessionExercise(updated[activeExercise].id, { notes: val });
       return updated;
     });
   };
@@ -369,6 +379,16 @@ const TrainingData = () => {
             canvasData={current?.canvasData}
             setCanvasData={updateCanvasData}
           />
+
+          <div className="mt-6">
+            <label className="text-sm font-bold text-slate-700 mb-2 block uppercase tracking-tight">Trainee Behavior & Instructor Remarks</label>
+            <textarea
+              className="w-full p-4 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm h-24 resize-none"
+              placeholder="e.g. Trainee showed hesitation during GPS input, corrected after verbal prompt..."
+              value={current?.notes || ""}
+              onChange={(e) => updateNotes(e.target.value)}
+            />
+          </div>
 
 
           <div className="flex justify-between items-center mt-6">
