@@ -164,12 +164,9 @@ const Dashboard = () => {
                 <button
                   onClick={() => {
                     setActiveSession(nextSession);
-                    const typeLower = (nextSession.type || "").toLowerCase();
-                    if (typeLower.includes("flight") || typeLower.includes("simulator")) {
-                      navigate("/training");
-                    } else {
-                      scrollToPrep();
-                    }
+                    // Upcoming sessions ALWAYS show the preparation panel
+                    const el = document.getElementById("session-prep-area");
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                   }}
                   className="grid grid-cols-[160px_120px_minmax(200px,1.5fr)_minmax(150px,1fr)_minmax(150px,1fr)_110px] gap-4 w-full text-left px-6 py-5 hover:bg-blue-50/40 transition border-l-2 border-blue-600 bg-white group items-center"
                 >

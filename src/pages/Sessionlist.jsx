@@ -21,24 +21,18 @@ const SessionList = () => {
   }, []);
 
   const handleAction = (session) => {
-    const isCompleted = session.status === "completed";
-    const isOngoing = session.status === "ongoing";
-    const needsAction = isCompleted && !session.debriefSummary;
-
-    // Improved robust check for training types
-    const typeLower = (session.type || "").toLowerCase();
-    const isTrainingType = typeLower.includes("flight") || typeLower.includes("simulator");
-
     setActiveSession(session);
 
-    if (isOngoing || (isTrainingType && !isCompleted)) {
+    if (session.status === "ongoing") {
+      // ONLY live sessions go directly to the TrainingData grading panel
       navigate("/training");
-    } else if (isCompleted || needsAction) {
-      navigate("/logbook");
+    } else if (session.status === "completed") {
+      // Completed routing logic
+      navigate("/reports");
     } else {
-      // For upcoming / ground sessions
-      const el = document.getElementById("prep-details");
-      if (el) el.scrollIntoView({ behavior: "smooth" });
+      // Upcoming and all other sessions stay on Dashboard and reveal Prep details
+      const el = document.getElementById("session-prep-area");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
