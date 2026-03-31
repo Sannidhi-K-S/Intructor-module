@@ -7,112 +7,146 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Session {
-  id             Int          @id @default(autoincrement())
-  session_title  String
-  instructor_id  Int
-  student_id     String       // Matching Trainee.id
-  aircraft_id    Int?
-  simulator_id   Int?
-  training_type  TrainingType?
-  lesson_plan_id Int?
-  start_time     DateTime
-  end_time       DateTime
-  notes          String?
-  created_at     DateTime     @default(now())
-
-  // RELATIONS
-  lessonPlan     LessonPlan?  @relation(fields: [lesson_plan_id], references: [id])
-}
-
-enum TrainingType {
-  Flight_Training
-  Simulator
-  Ground_School
-}
-
-model LessonPlan {
-  id               Int               @id @default(autoincrement())
-  topic            String
-  instructorNotes  String?           @db.Text
-  expectedOutcome  String?           @db.Text
-  created_at       DateTime          @default(now())
-  
-  // RELATIONS
-  sessions         Session[]
-  objectives       LessonObjective[]
-  exercises        Exercise[]
-}
-
-model LessonObjective {
-  id             Int        @id @default(autoincrement())
-  lesson_plan_id Int
-  text           String
-  lessonPlan     LessonPlan @relation(fields: [lesson_plan_id], references: [id])
-}
-
-model Exercise {
+model exercise {
   id             Int        @id @default(autoincrement())
   lesson_plan_id Int
   name           String
   type           String?
-  lessonPlan     LessonPlan @relation(fields: [lesson_plan_id], references: [id])
+  lessonplan     lessonplan @relation(fields: [lesson_plan_id], references: [id], map: "Exercise_lesson_plan_id_fkey")
+
+  @@index([lesson_plan_id], map: "Exercise_lesson_plan_id_fkey")
 }
 
-model Trainee {
-  id              String   @id @default(uuid())
-  traineeId       String
-  name            String
-  email           String
-  phone           String?
-  dob             DateTime?
-  enrollmentDate  DateTime
-  course          String?
-  licenseType     String?
-  status          String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Instructor {
+model instructor {
   id           Int      @id @default(autoincrement())
-  instructorId String   @unique @default("INST-001")
+  instructorId String   @unique(map: "Instructor_instructorId_key") @default("INST-001")
   name         String
-  email        String   @unique
+  email        String   @unique(map: "Instructor_email_key")
   phone        String?
   designation  String
   status       String?  @default("active")
   created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  updated_at   DateTime
 }
 
-model TrainingData {
-  id                 Int      @id @default(autoincrement())
-  session_id         Int      @unique
+model lessonobjective {
+  id             Int        @id @default(autoincrement())
+  lesson_plan_id Int
+  text           String
+  lessonplan     lessonplan @relation(fields: [lesson_plan_id], references: [id], map: "LessonObjective_lesson_plan_id_fkey")
+
+  @@index([lesson_plan_id], map: "LessonObjective_lesson_plan_id_fkey")
+}
+
+model lessonplan {
+  id              Int               @id @default(autoincrement())
+  topic           String
+  instructorNotes String?           @db.Text
+  expectedOutcome String?           @db.Text
+  created_at      DateTime          @default(now())
+  exercise        exercise[]
+  lessonobjective lessonobjective[]
+  session         session[]
+}
+
+model session {
+  id             Int                    @id @default(autoincrement())
+  session_title  String
+  instructor_id  Int
+  student_id     String
+  aircraft_id    Int?
+  simulator_id   Int?
+  training_type  session_training_type?
+  lesson_plan_id Int?
+  start_time     DateTime
+  end_time       DateTime
+  notes          String?
+  created_at     DateTime               @default(now())
+  lessonplan     lessonplan?            @relation(fields: [lesson_plan_id], references: [id], map: "Session_lesson_plan_id_fkey")
+
+  @@index([lesson_plan_id], map: "Session_lesson_plan_id_fkey")
+}
+
+model sessionexercise {
+  id            Int          @id @default(autoincrement())
+  training_id   Int
+  exercise_id   Int?
+  exercise_name String
+  exercise_type String
+  score         Float
+  canvas_data   String?      @db.LongText
+  completed     Boolean      @default(false)
+  notes         String?      @db.Text
+  created_at    DateTime     @default(now())
+  trainingdata  trainingdata @relation(fields: [training_id], references: [id], map: "SessionExercise_training_id_fkey")
+
+  @@index([training_id], map: "SessionExercise_training_id_fkey")
+}
+
+model trainee {
+  id             String    @id
+  traineeId      String
+  name           String
+  email          String
+  phone          String?
+  dob            DateTime?
+  enrollmentDate DateTime
+  course         String?
+  licenseType    String?
+  status         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime
+}
+
+model trainingdata {
+  id                 Int               @id @default(autoincrement())
+  session_id         Int               @unique(map: "TrainingData_session_id_key")
   mode               String?
   topic              String?
   instructor_id      Int
   resource_id        String?
   traineeId          String
-  debrief_summary    String?  @db.Text
-  additional_remarks String?  @db.Text
-  session_outcome    String?   
-  created_at         DateTime @default(now())
-  exercises          SessionExercise[]
+  debrief_summary    String?           @db.Text
+  additional_remarks String?           @db.Text
+  session_outcome    String?
+  created_at         DateTime          @default(now())
+  sessionexercise    sessionexercise[]
 }
 
-model SessionExercise {
-  id              Int      @id @default(autoincrement())
-  training_id     Int
-  exercise_id     Int?     
-  exercise_name   String
-  exercise_type   String
-  score           Float
-  canvas_data     String?  @db.LongText
-  completed       Boolean  @default(false)
-  notes           String?  @db.Text
-  created_at      DateTime @default(now())
-  training        TrainingData @relation(fields: [training_id], references: [id])
+enum session_training_type {
+  Flight_Training
+  Simulator
+  Ground_School
 }
 
+model exercise_submissions {
+  id          Int        @id @default(autoincrement())
+  exercise_id Int?
+  score       Int?
+  notes       String?    @db.Text
+  canvas_data Json?
+  updated_at  DateTime?  @default(now()) @db.Timestamp(0)
+  session_id  Int?
+  exercises   exercises? @relation(fields: [exercise_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "exercise_submissions_ibfk_1")
 
+  @@index([exercise_id], map: "exercise_id")
+}
+
+model exercises {
+  id                   Int                    @id @default(autoincrement())
+  session_id           Int?
+  name                 String?                @db.VarChar(255)
+  exercise_submissions exercise_submissions[]
+  sessions             sessions?              @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "exercises_ibfk_1")
+
+  @@index([session_id], map: "session_id")
+}
+
+model sessions {
+  id           Int         @id @default(autoincrement())
+  session_code String?     @db.VarChar(50)
+  created_at   DateTime?   @default(now()) @db.Timestamp(0)
+  final_grade  Int?
+  grade_label  String?     @db.VarChar(20)
+  exercises    exercises[]
+}
