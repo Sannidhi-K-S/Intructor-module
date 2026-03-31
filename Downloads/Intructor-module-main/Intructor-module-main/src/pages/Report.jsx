@@ -1,0 +1,496 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import useAppStore from '../store/useAppStore';
+import TrainingAPIService from '../services/trainingAPIService';
+import { jsPDF } from 'jspdf';
+import {
+  HiOutlineArrowDownTray,
+  HiOutlineStar,
+  HiOutlineMapPin,
+  HiOutlineChatBubbleBottomCenterText,
+  HiOutlineIdentification,
+  HiOutlineSparkles,
+  HiOutlineDocumentText,
+  HiOutlineExclamationCircle,
+} from 'react-icons/hi2';
+
+const Reports = () => {
+    const { sessionId } = useParams();
+    const navigate = useNavigate();
+    const { sessions, loadDashboard, updateSessionData, addSession, activeSession } = useAppStore();
+    const [additionalRemark, setAdditionalRemark] = useState('');
+    const [generatedDebrief, setGeneratedDebrief] = useState(null);
+    const [isGeneratingDebrief, setIsGeneratingDebrief] = useState(false);
+    const [isSavingDebrief, setIsSavingDebrief] = useState(false);
+    const [debriefError, setDebriefError] = useState(null);
+
+    const allSessions = [...sessions];
+    
+    // Prioritize activeSession if it matches the sessionId, otherwise look in allSessions
+    const session = activeSession && String(activeSession.id) === String(sessionId)
+        ? activeSession
+        : sessionId ? allSessions.find((s) => String(s.id) === String(sessionId)) : (allSessions.length > 0 ? allSessions[0] : null);
+
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            if (!sessions.length) await loadDashboard();
+            setIsLoading(false);
+        };
+        loadData();
+    }, [sessions.length, loadDashboard]);
+
+    useEffect(() => {
+        if (!session) return;
+
+        if (session.debriefSummary && !generatedDebrief) {
+            setGeneratedDebrief({ overallNarrative: { executiveSummary: session.debriefSummary } });
+        }
+
+        if (session.additionalRemarks) {
+            setAdditionalRemark(session.additionalRemarks);
+        }
+
+        if (!session.debriefSummary && !generatedDebrief && !isGeneratingDebrief) {
+            generateDebriefSummary();
+        }
+    }, [session?.id]);
+
+    // Debug: Log loaded data
+    useEffect(() => {
+        console.log('Reports Debug:', { 
+            isLoading,
+            sessionId, 
+            sessionsCount: sessions.length,
+            allSessionsCount: allSessions.length, 
+            session: session ? { id: session.id, trainee: session.trainee, topic: session.topic } : null,
+            exercises: session?.lessonPlan?.exercises?.length,
+            allSessionIds: allSessions.map(s => s.id)
+        });
+    }, [session, allSessions, sessionId, isLoading, sessions.length]);
+
+    const downloadPDF = (session) => {
+        if (!session) return;
+        const exercises = session.lessonPlan?.exercises || [];
+        const averageScore = exercises.length > 0
+            ? exercises.reduce((acc, ex) => acc + (ex.score || 0), 0) / exercises.length
+            : 0;
+
+        const doc = new jsPDF();
+        doc.setFontSize(22);
+        doc.text('Operational Training Report', 20, 20);
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text('Mission ID: ' + session.id + ' | Date: ' + (session.date ? new Date(session.date).toLocaleDateString() : 'Unknown Date'), 20, 30);
+
+        doc.setDrawColor(200);
+        doc.line(20, 35, 190, 35);
+
+        doc.setFontSize(14);
+        doc.setTextColor(0);
+        doc.text('Mission Overview', 20, 45);
+        doc.setFontSize(11);
+        doc.text('Trainee: ' + session.trainee, 20, 55);
+        doc.text('Topic: ' + session.topic, 20, 62);
+        doc.text('Mission Type: ' + session.type, 20, 69);
+        doc.text('Resource: ' + session.resourceUsed, 20, 76);
+        doc.text('Outcome: ' + (session.sessionOutcome ? session.sessionOutcome.toUpperCase() : 'COMPLETED'), 20, 83);
+        doc.text('Average Score: ' + averageScore.toFixed(1) + '/5.0', 20, 90);
+
+        doc.setFontSize(14);
+        doc.text('Detailed Exercise Grading', 20, 105);
+
+        let y = 115;
+        exercises.forEach((ex, i) => {
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFontSize(11);
+            doc.text((i + 1) + '. ' + ex.name + ' (' + ex.type + ')', 25, y);
+            doc.text('Score: ' + (ex.score || 0) + '/5', 160, y);
+            y += 8;
+            if (ex.notes) {
+                doc.setFontSize(9);
+                doc.setTextColor(80);
+                const splitNotes = doc.splitTextToSize(ex.notes.replace(/<[^>]*>/g, ''), 150);
+                doc.text(splitNotes, 30, y);
+                y += (splitNotes.length * 6) + 4;
+            }
+            doc.setTextColor(0);
+            y += 4;
+        });
+
+        if (generatedDebrief?.overallNarrative?.executiveSummary) {
+            if (y > 230) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.text('AI-Generated Instructor Debrief Summary', 20, y);
+            y += 10;
+            doc.setFontSize(10);
+            const aiSummary = doc.splitTextToSize(generatedDebrief.overallNarrative.executiveSummary, 170);
+            doc.text(aiSummary, 20, y);
+            y += (aiSummary.length * 5) + 5;
+
+            if (generatedDebrief.performance) {
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.setFontSize(12);
+                doc.text('Performance Analysis:', 20, y);
+                y += 8;
+                doc.setFontSize(10);
+                doc.text('Level: ' + generatedDebrief.performance.performanceLevel, 25, y);
+                y += 5;
+                doc.text('Average Score: ' + (generatedDebrief.performance.averageScore || 0) + '/5.0', 25, y);
+                y += 5;
+                doc.text('Consistency: ' + generatedDebrief.performance.consistency, 25, y);
+                y += 8;
+            }
+
+            if (generatedDebrief.recommendations?.length > 0) {
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.setFontSize(12);
+                doc.text('Key Recommendations:', 20, y);
+                y += 8;
+                doc.setFontSize(10);
+                generatedDebrief.recommendations.slice(0, 3).forEach((rec) => {
+                    if (y > 270) { doc.addPage(); y = 20; }
+                    doc.text('• ' + rec.category + ': ' + rec.text, 25, y);
+                    y += 6;
+                });
+                y += 5;
+            }
+        } else if (session.debriefSummary) {
+            if (y > 230) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.text('Instructor Debrief Summary', 20, y);
+            y += 10;
+            doc.setFontSize(10);
+            const summary = doc.splitTextToSize(session.debriefSummary.replace(/<[^>]*>/g, ''), 170);
+            doc.text(summary, 20, y);
+            y += (summary.length * 5) + 5;
+        }
+
+        if (additionalRemark.trim()) {
+            if (y > 230) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.text('Additional Remark', 20, y);
+            y += 10;
+            doc.setFontSize(10);
+            const remark = doc.splitTextToSize(additionalRemark, 170);
+            doc.text(remark, 20, y);
+        }
+
+        doc.save('Mission_Report_' + session.trainee.replace(/\s+/g, '_') + '_' + session.id + '.pdf');
+    };
+
+    const generateDebriefSummary = async () => {
+        if (!session) return;
+        setIsGeneratingDebrief(true);
+        setDebriefError(null);
+
+        try {
+            const result = await TrainingAPIService.getDebriefSummary(session.id);
+            if (result.success) {
+                setGeneratedDebrief(result.data);
+                setAdditionalRemark(result.data.overallNarrative?.executiveSummary || '');
+            } else {
+                setDebriefError(result.message || 'Failed to generate debrief summary');
+            }
+        } catch (error) {
+            console.error('Error generating debrief:', error);
+            setDebriefError('Failed to generate debrief summary. Please check your connection.');
+        } finally {
+            setIsGeneratingDebrief(false);
+        }
+    };
+
+    const createDemoSession = async () => {
+        try {
+            const sessionId = Math.floor(Math.random() * 10000);
+            const demoSession = {
+                id: sessionId,
+                trainee: 'Captain Morgan',
+                topic: 'Advanced Flight Procedures',
+                type: 'Flight Training',
+                resourceUsed: 'Aircraft A380',
+                date: new Date(),
+                sessionOutcome: 'completed',
+                debriefSummary: '',
+                additionalRemarks: '',
+                lessonPlan: {
+                    exercises: [
+                        { id: 1, name: 'Pre-Flight Check', type: 'Procedural', score: 4.5, notes: 'Excellent attention to detail' },
+                        { id: 2, name: 'Takeoff Procedure', type: 'Operational', score: 4.0, notes: 'Smooth execution' },
+                        { id: 3, name: 'Navigation', type: 'Technical', score: 4.8, notes: 'Perfect accuracy' },
+                        { id: 4, name: 'Emergency Landing', type: 'Safety', score: 4.2, notes: 'Quick response time' },
+                    ]
+                }
+            };
+
+            // Add to store synchronously
+            addSession(demoSession);
+            console.log('Demo session created:', sessionId);
+            
+            // Navigate to the demo session
+            navigate(`/reports/${sessionId}`);
+        } catch (error) {
+            console.error('Error creating demo session:', error);
+        }
+    };
+
+    const saveDebriefSummary = async () => {
+        if (!session) return;
+        setIsSavingDebrief(true);
+
+        try {
+            // Save debrief summary
+            const result = await TrainingAPIService.saveDebriefSummary(session.id, {
+                debriefSummary: generatedDebrief?.overallNarrative?.executiveSummary || '',
+                additionalRemarks: additionalRemark
+            });
+
+            if (result.success) {
+                // Update session data in store
+                updateSessionData(session.id, {
+                    debriefSummary: generatedDebrief?.overallNarrative?.executiveSummary || '',
+                    additionalRemarks: additionalRemark
+                });
+
+                // Now generate report from training data
+                // First, get training data for this session
+                const trainingData = await TrainingAPIService.getTrainingDataBySession(session.id);
+                if (trainingData) {
+                    // Generate report
+                    const report = await TrainingAPIService.createReport(trainingData.id);
+                    console.log('Report generated:', report);
+
+                    // Archive to history
+                    const history = await TrainingAPIService.archiveReport(report.id, 'Auto-archived after debrief save');
+                    console.log('Report archived:', history);
+
+                    alert('Debrief saved, report generated, and archived to history!');
+                } else {
+                    alert('Debrief saved successfully!');
+                }
+            } else {
+                alert('Failed to save debrief summary');
+            }
+        } catch (error) {
+            console.error('Error saving debrief:', error);
+            alert('Failed to save debrief summary. Please try again.');
+        } finally {
+            setIsSavingDebrief(false);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div className='max-w-7xl mx-auto p-10 text-center'>
+                <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
+                <h2 className='text-xl font-bold'>Loading Report...</h2>
+                <p className='text-slate-500 mt-2'>Please wait while we load the session data.</p>
+            </div>
+        );
+    }
+
+    if (!session) {
+        // If no sessionId provided, show list of available sessions
+        if (!sessionId && allSessions.length > 0) {
+            return (
+                <div className='max-w-7xl mx-auto p-10'>
+                    <h2 className='text-2xl font-bold mb-6'>Training Reports</h2>
+                    <p className='text-slate-500 mb-8'>Select a session to view its report:</p>
+                    
+                    <div className='grid gap-4'>
+                        {allSessions.map((s) => (
+                            <div key={s.id} className='p-4 border rounded-lg hover:bg-slate-50 cursor-pointer' onClick={() => navigate(`/reports/${s.id}`)}>
+                                <div className='flex justify-between items-center'>
+                                    <div>
+                                        <h3 className='font-bold'>{s.topic}</h3>
+                                        <p className='text-sm text-slate-500'>{s.trainee} • {s.type} • {s.date ? new Date(s.date).toLocaleDateString() : 'Unknown date'}</p>
+                                    </div>
+                                    <div className='text-right'>
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${s.sessionOutcome === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                            {s.sessionOutcome || 'Pending'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        // Session not found
+        return (
+            <div className='max-w-7xl mx-auto p-10 text-center'>
+                <h2 className='text-xl font-bold'>Report Not Found</h2>
+                <p className='text-slate-500 mt-2'>No training report available for session ID: {sessionId}</p>
+                <p className='text-slate-400 text-xs mt-2'>Available sessions: {allSessions.length} | IDs: {allSessions.map(s => s.id).join(', ')}</p>
+                
+                <div className='mt-8 flex gap-4 justify-center flex-wrap'>
+                    <button 
+                        onClick={createDemoSession} 
+                        className='px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold'
+                    >
+                        📊 Create Demo Session
+                    </button>
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className='px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition'
+                    >
+                        Back to Dashboard
+                    </button>
+                    <button 
+                        onClick={() => navigate('/history')} 
+                        className='px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition'
+                    >
+                        View History
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const sessionExercises = session.lessonPlan?.exercises || [];
+    const averageScore = sessionExercises.length > 0 ? sessionExercises.reduce((acc, ex) => acc + (ex.score || 0), 0) / sessionExercises.length : 0;
+
+    return (
+        <div className='max-w-7xl mx-auto space-y-6'>
+            <div className='glass-card w-full max-h-[85vh] overflow-hidden flex flex-col bg-white'>
+                <div className='p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50'>
+                    <div className='flex items-center gap-3'>
+                        <div className='w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center'>
+                            <HiOutlineIdentification className='w-5 h-5' />
+                        </div>
+                        <div>
+                            <h2 className='text-lg font-bold text-slate-900'>Training Report</h2>
+                            <p className='text-[12px] text-slate-500 font-medium'>{session.id} · {session.trainee}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className='flex-1 overflow-y-auto p-8 space-y-8'>
+                    <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+                        <div className='p-4 bg-slate-50 rounded-xl border border-slate-200'>
+                            <p className='text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1'>Performance</p>
+                            <p className='text-xl font-bold text-slate-900'>{averageScore.toFixed(1)}<span className='text-slate-300'>/5.0</span></p>
+                        </div>
+                        <div className='p-4 bg-slate-50 rounded-xl border border-slate-200'>
+                            <p className='text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1'>Mission Type</p>
+                            <p className='text-[13px] font-bold text-slate-900'>{session.type}</p>
+                        </div>
+                        <div className='p-4 bg-slate-50 rounded-xl border border-slate-200'>
+                            <p className='text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1'>Resource</p>
+                            <p className='text-[13px] font-bold text-slate-900 truncate' title={session.resourceUsed}>{session.resourceUsed || 'N/A'}</p>
+                        </div>
+                        <div className={`p-4 rounded-xl border ${session.sessionOutcome === 'completed' ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${session.sessionOutcome === 'completed' ? 'text-emerald-600' : 'text-amber-600'}`}>Outcome</p>
+                            <p className={`text-[13px] font-bold uppercase ${session.sessionOutcome === 'completed' ? 'text-emerald-700' : 'text-amber-700'}`}>{session.sessionOutcome || 'Completed'}</p>
+                        </div>
+                    </div>
+
+                    <section>
+                        <div className='flex items-center justify-between border-b border-slate-100 pb-3 mb-6'>
+                            <h3 className='text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2'><HiOutlineChatBubbleBottomCenterText className='w-4 h-4' /> Instructor Debrief Summary</h3>
+                            <button onClick={generateDebriefSummary} disabled={isGeneratingDebrief} className='flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 transition'><HiOutlineSparkles className='w-4 h-4' /> {isGeneratingDebrief ? 'Generating...' : 'Generate AI Summary'}</button>
+                        </div>
+
+                        {debriefError && <div className='mb-4 p-4 bg-red-50 border border-red-200 rounded-lg'>{debriefError}</div>}
+
+                        <div className='bg-slate-50 p-6 rounded-xl border border-slate-100'>
+                            {generatedDebrief ? (
+                                <div className='space-y-6'>
+                                  <h4 className='text-sm font-bold text-slate-900 mb-2'>Executive Summary</h4>
+                                  <p className='text-sm text-slate-700 leading-relaxed'>{generatedDebrief.overallNarrative?.executiveSummary}</p>
+
+                                  {generatedDebrief.performance && (
+                                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-white rounded-lg border border-slate-200'>
+                                      <div className='text-center'>
+                                        <p className='text-xs font-bold text-slate-500 uppercase mb-1'>Performance Level</p>
+                                        <p className='text-lg font-bold text-slate-900'>{generatedDebrief.performance.performanceLevel}</p>
+                                      </div>
+                                      <div className='text-center'>
+                                        <p className='text-xs font-bold text-slate-500 uppercase mb-1'>Average Score</p>
+                                        <p className='text-lg font-bold text-slate-900'>{generatedDebrief.performance.averageScore}/5.0</p>
+                                      </div>
+                                      <div className='text-center'>
+                                        <p className='text-xs font-bold text-slate-500 uppercase mb-1'>Consistency</p>
+                                        <p className='text-lg font-bold text-slate-900'>{generatedDebrief.performance.consistency}</p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {generatedDebrief.recommendations?.length > 0 && (
+                                    <div>
+                                      <h4 className='text-sm font-bold text-blue-900 mb-2'>Key Recommendations</h4>
+                                      <div className='space-y-2'>
+                                        {generatedDebrief.recommendations.map((rec, idx) => (
+                                          <div key={idx} className='p-3 rounded-lg border bg-blue-50 border-blue-200'>
+                                            <p className='text-sm font-semibold text-slate-900'>{rec.category}</p>
+                                            <p className='text-sm text-slate-700'>{rec.text}</p>
+                                            <p className='text-xs text-slate-500 mt-1'>Priority: {rec.priority || 'Standard'}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className='mt-4'>
+                                    <label htmlFor='additionalRemark' className='block text-xs font-bold text-slate-500 mb-1'>Additional Remark (optional)</label>
+                                    <textarea
+                                      id='additionalRemark'
+                                      rows={3}
+                                      value={additionalRemark}
+                                      onChange={(e) => setAdditionalRemark(e.target.value)}
+                                      className='w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                      placeholder='Add any optional remarks for the training report'
+                                    />
+                                  </div>
+
+                                  <div className='flex justify-end pt-4 border-t border-slate-200'>
+                                    <button onClick={saveDebriefSummary} disabled={isSavingDebrief} className='px-6 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50 hover:bg-green-700 transition'>
+                                      {isSavingDebrief ? 'Saving...' : 'Save Debrief Summary'}
+                                    </button>
+                                  </div>
+                                </div>
+                            ) : (
+                                <p className='text-slate-500 italic'>No summary generated yet.</p>
+                            )}
+
+                            {!generatedDebrief && session.debriefSummary && (
+                                <div className='mt-4 p-4 border-t' dangerouslySetInnerHTML={{ __html: session.debriefSummary }} />
+                            )}
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 className='text-xl font-bold mb-4'>Exercise Grades</h3>
+                        <div className='space-y-4'>
+                            {sessionExercises.map((ex, i) => (
+                                <div key={ex.id || i} className='p-4 border rounded-xl flex justify-between items-center'>
+                                    <div>
+                                        <p className='font-bold'>{ex.name}</p>
+                                        <p className='text-sm text-slate-500'>{ex.type}</p>
+                                    </div>
+                                    <p className='text-xl font-bold'>{ex.score}/5.0</p>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+
+                <div className='p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50'>
+                    <button onClick={markAsComplete} className='px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold'>
+                        Mark as Complete
+                    </button>
+                    <div className='flex gap-4'>
+                        <button onClick={() => navigate('/reports')} className='px-6 py-2 border rounded'>Back to Reports</button>
+                        <button onClick={() => downloadPDF(session)} className='px-6 py-2 bg-slate-900 text-white rounded font-bold'>Download PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Reports;
