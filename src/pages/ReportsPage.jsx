@@ -17,7 +17,6 @@ import {
 const ReportsPage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const [session, setSession] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [additionalRemark, setAdditionalRemark] = useState('');
@@ -26,25 +25,39 @@ const ReportsPage = () => {
   const [isSavingDebrief, setIsSavingDebrief] = useState(false);
   const [debriefError, setDebriefError] = useState(null);
 
-  const { updateSessionData } = useAppStore();
+  const { sessions, historySessions, loadDashboard, loadHistory, updateSessionData } = useAppStore();
+
+  const allSessions = [...sessions, ...historySessions].filter((v, idx, arr) => arr.findIndex(x => x.id === v.id) === idx);
+  const session = sessionId ? allSessions.find((s) => String(s.id) === String(sessionId)) : allSessions[0];
 
   useEffect(() => {
-    const fetchSessionReport = async () => {
-      if (!sessionId) return;
-      try {
-        const response = await fetch(`http://localhost:5000/api/sessions/${sessionId}/report`);
-        if (response.ok) {
-          const data = await response.json();
-          setSession(data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch report data:", err);
-      } finally {
-        setIsLoading(false);
-      }
+    const loadSessions = async () => {
+      if (!sessions.length) await loadDashboard();
+      if (!historySessions.length) await loadHistory();
+      setIsLoading(false);
     };
-    fetchSessionReport();
-  }, [sessionId]);
+
+    loadSessions();
+  }, [sessions.length, historySessions.length, loadDashboard, loadHistory]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    // If session already has a stored summary, show it
+    if (session.debriefSummary && !generatedDebrief) {
+      setGeneratedDebrief({ overallNarrative: { executiveSummary: session.debriefSummary } });
+    }
+
+    // Automatically fill optional additional remarks from session metadata, if available
+    if (session.additionalRemarks) {
+      setAdditionalRemark(session.additionalRemarks);
+    }
+
+    // Auto generate if no existing summary
+    if (!session.debriefSummary && !generatedDebrief && !isGeneratingDebrief) {
+      generateDebriefSummary();
+    }
+  }, [session, generatedDebrief, session?.debriefSummary, session?.additionalRemarks, isGeneratingDebrief]);
 
   const downloadPDF = (s) => {
     if (!s) return;
@@ -331,6 +344,18 @@ const ReportsPage = () => {
                       </div>
                     </div>
                   )}
+
+                  <div className='mt-4'>
+                    <label htmlFor='additionalRemark' className='block text-xs font-bold text-slate-500 mb-1'>Additional Remark (optional)</label>
+                    <textarea
+                      id='additionalRemark'
+                      rows={3}
+                      value={additionalRemark}
+                      onChange={(e) => setAdditionalRemark(e.target.value)}
+                      className='w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                      placeholder='Add any optional remarks for the training report'
+                    />
+                  </div>
 
                   <div className='flex justify-end pt-4 border-t border-slate-200'>
                     <button onClick={saveDebriefSummary} disabled={isSavingDebrief} className='px-6 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50 hover:bg-green-700 transition'>
