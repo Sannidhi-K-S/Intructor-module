@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import useAppStore from '../store/useAppStore';
 import TrainingAPIService from '../services/trainingAPIService';
@@ -17,20 +17,59 @@ import {
 const Reports = () => {
     const { sessionId } = useParams();
     const navigate = useNavigate();
-    const { sessions, historySessions, loadDashboard, loadHistory, updateSessionData } = useAppStore();
+    const { sessions, loadDashboard, updateSessionData, addSession, activeSession } = useAppStore();
     const [additionalRemark, setAdditionalRemark] = useState('');
     const [generatedDebrief, setGeneratedDebrief] = useState(null);
     const [isGeneratingDebrief, setIsGeneratingDebrief] = useState(false);
     const [isSavingDebrief, setIsSavingDebrief] = useState(false);
     const [debriefError, setDebriefError] = useState(null);
 
-    const allSessions = [...sessions, ...historySessions].filter((v, idx, arr) => arr.findIndex(x => x.id === v.id) === idx);
-    const session = sessionId ? allSessions.find((s) => String(s.id) === String(sessionId)) : allSessions[0];
+    const allSessions = [...sessions];
+    
+    // Prioritize activeSession if it matches the sessionId, otherwise look in allSessions
+    const session = activeSession && String(activeSession.id) === String(sessionId)
+        ? activeSession
+        : sessionId ? allSessions.find((s) => String(s.id) === String(sessionId)) : (allSessions.length > 0 ? allSessions[0] : null);
+
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!sessions.length) loadDashboard();
-        if (!historySessions.length) loadHistory();
-    }, [sessions.length, historySessions.length, loadDashboard, loadHistory]);
+        const loadData = async () => {
+            setIsLoading(true);
+            if (!sessions.length) await loadDashboard();
+            setIsLoading(false);
+        };
+        loadData();
+    }, [sessions.length, loadDashboard]);
+
+    useEffect(() => {
+        if (!session) return;
+
+        if (session.debriefSummary && !generatedDebrief) {
+            setGeneratedDebrief({ overallNarrative: { executiveSummary: session.debriefSummary } });
+        }
+
+        if (session.additionalRemarks) {
+            setAdditionalRemark(session.additionalRemarks);
+        }
+
+        if (!session.debriefSummary && !generatedDebrief && !isGeneratingDebrief) {
+            generateDebriefSummary();
+        }
+    }, [session?.id]);
+
+    // Debug: Log loaded data
+    useEffect(() => {
+        console.log('Reports Debug:', { 
+            isLoading,
+            sessionId, 
+            sessionsCount: sessions.length,
+            allSessionsCount: allSessions.length, 
+            session: session ? { id: session.id, trainee: session.trainee, topic: session.topic } : null,
+            exercises: session?.lessonPlan?.exercises?.length,
+            allSessionIds: allSessions.map(s => s.id)
+        });
+    }, [session, allSessions, sessionId, isLoading, sessions.length]);
 
     const downloadPDF = (session) => {
         if (!session) return;
@@ -164,40 +203,151 @@ const Reports = () => {
         }
     };
 
+    const createDemoSession = async () => {
+        try {
+            const sessionId = Math.floor(Math.random() * 10000);
+            const demoSession = {
+                id: sessionId,
+                trainee: 'Captain Morgan',
+                topic: 'Advanced Flight Procedures',
+                type: 'Flight Training',
+                resourceUsed: 'Aircraft A380',
+                date: new Date(),
+                sessionOutcome: 'completed',
+                debriefSummary: '',
+                additionalRemarks: '',
+                lessonPlan: {
+                    exercises: [
+                        { id: 1, name: 'Pre-Flight Check', type: 'Procedural', score: 4.5, notes: 'Excellent attention to detail' },
+                        { id: 2, name: 'Takeoff Procedure', type: 'Operational', score: 4.0, notes: 'Smooth execution' },
+                        { id: 3, name: 'Navigation', type: 'Technical', score: 4.8, notes: 'Perfect accuracy' },
+                        { id: 4, name: 'Emergency Landing', type: 'Safety', score: 4.2, notes: 'Quick response time' },
+                    ]
+                }
+            };
+
+            // Add to store synchronously
+            addSession(demoSession);
+            console.log('Demo session created:', sessionId);
+            
+            // Navigate to the demo session
+            navigate(`/reports/${sessionId}`);
+        } catch (error) {
+            console.error('Error creating demo session:', error);
+        }
+    };
+
     const saveDebriefSummary = async () => {
-        if (!session || !generatedDebrief) return;
+        if (!session) return;
         setIsSavingDebrief(true);
-        setDebriefError(null);
 
         try {
+            // Save debrief summary
             const result = await TrainingAPIService.saveDebriefSummary(session.id, {
-                debriefSummary: generatedDebrief.overallNarrative?.executiveSummary || '',
+                debriefSummary: generatedDebrief?.overallNarrative?.executiveSummary || '',
                 additionalRemarks: additionalRemark
             });
 
             if (result.success) {
+                // Update session data in store
                 updateSessionData(session.id, {
-                    debriefSummary: generatedDebrief.overallNarrative?.executiveSummary || '',
+                    debriefSummary: generatedDebrief?.overallNarrative?.executiveSummary || '',
                     additionalRemarks: additionalRemark
                 });
-                alert('Debrief summary saved successfully!');
+
+                // Now generate report from training data
+                // First, get training data for this session
+                const trainingData = await TrainingAPIService.getTrainingDataBySession(session.id);
+                if (trainingData) {
+                    // Generate report
+                    const report = await TrainingAPIService.createReport(trainingData.id);
+                    console.log('Report generated:', report);
+
+                    // Archive to history
+                    const history = await TrainingAPIService.archiveReport(report.id, 'Auto-archived after debrief save');
+                    console.log('Report archived:', history);
+
+                    alert('Debrief saved, report generated, and archived to history!');
+                } else {
+                    alert('Debrief saved successfully!');
+                }
             } else {
-                setDebriefError(result.message || 'Failed to save debrief summary');
+                alert('Failed to save debrief summary');
             }
         } catch (error) {
             console.error('Error saving debrief:', error);
-            setDebriefError('Failed to save debrief summary. Please try again.');
+            alert('Failed to save debrief summary. Please try again.');
         } finally {
             setIsSavingDebrief(false);
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className='max-w-7xl mx-auto p-10 text-center'>
+                <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4'></div>
+                <h2 className='text-xl font-bold'>Loading Report...</h2>
+                <p className='text-slate-500 mt-2'>Please wait while we load the session data.</p>
+            </div>
+        );
+    }
+
     if (!session) {
+        // If no sessionId provided, show list of available sessions
+        if (!sessionId && allSessions.length > 0) {
+            return (
+                <div className='max-w-7xl mx-auto p-10'>
+                    <h2 className='text-2xl font-bold mb-6'>Training Reports</h2>
+                    <p className='text-slate-500 mb-8'>Select a session to view its report:</p>
+                    
+                    <div className='grid gap-4'>
+                        {allSessions.map((s) => (
+                            <div key={s.id} className='p-4 border rounded-lg hover:bg-slate-50 cursor-pointer' onClick={() => navigate(`/reports/${s.id}`)}>
+                                <div className='flex justify-between items-center'>
+                                    <div>
+                                        <h3 className='font-bold'>{s.topic}</h3>
+                                        <p className='text-sm text-slate-500'>{s.trainee} • {s.type} • {s.date ? new Date(s.date).toLocaleDateString() : 'Unknown date'}</p>
+                                    </div>
+                                    <div className='text-right'>
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${s.sessionOutcome === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                            {s.sessionOutcome || 'Pending'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        // Session not found
         return (
             <div className='max-w-7xl mx-auto p-10 text-center'>
                 <h2 className='text-xl font-bold'>Report Not Found</h2>
-                <p className='text-slate-500 mt-2'>No training report available for this mission.</p>
-                <button onClick={() => navigate('/reports')} className='mt-6 px-6 py-2 border rounded'>Back to Reports</button>
+                <p className='text-slate-500 mt-2'>No training report available for session ID: {sessionId}</p>
+                <p className='text-slate-400 text-xs mt-2'>Available sessions: {allSessions.length} | IDs: {allSessions.map(s => s.id).join(', ')}</p>
+                
+                <div className='mt-8 flex gap-4 justify-center flex-wrap'>
+                    <button 
+                        onClick={createDemoSession} 
+                        className='px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold'
+                    >
+                        📊 Create Demo Session
+                    </button>
+                    <button 
+                        onClick={() => navigate('/')} 
+                        className='px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition'
+                    >
+                        Back to Dashboard
+                    </button>
+                    <button 
+                        onClick={() => navigate('/history')} 
+                        className='px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition'
+                    >
+                        View History
+                    </button>
+                </div>
             </div>
         );
     }
@@ -285,6 +435,18 @@ const Reports = () => {
                                     </div>
                                   )}
 
+                                  <div className='mt-4'>
+                                    <label htmlFor='additionalRemark' className='block text-xs font-bold text-slate-500 mb-1'>Additional Remark (optional)</label>
+                                    <textarea
+                                      id='additionalRemark'
+                                      rows={3}
+                                      value={additionalRemark}
+                                      onChange={(e) => setAdditionalRemark(e.target.value)}
+                                      className='w-full border border-slate-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                                      placeholder='Add any optional remarks for the training report'
+                                    />
+                                  </div>
+
                                   <div className='flex justify-end pt-4 border-t border-slate-200'>
                                     <button onClick={saveDebriefSummary} disabled={isSavingDebrief} className='px-6 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50 hover:bg-green-700 transition'>
                                       {isSavingDebrief ? 'Saving...' : 'Save Debrief Summary'}
@@ -317,9 +479,14 @@ const Reports = () => {
                     </section>
                 </div>
 
-                <div className='p-4 border-t border-slate-200 flex justify-end gap-4 bg-slate-50'>
-                    <button onClick={() => navigate('/reports')} className='px-6 py-2 border rounded'>Back to Reports</button>
-                    <button onClick={() => downloadPDF(session)} className='px-6 py-2 bg-slate-900 text-white rounded font-bold'>Download PDF</button>
+                <div className='p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50'>
+                    <button onClick={markAsComplete} className='px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-semibold'>
+                        Mark as Complete
+                    </button>
+                    <div className='flex gap-4'>
+                        <button onClick={() => navigate('/reports')} className='px-6 py-2 border rounded'>Back to Reports</button>
+                        <button onClick={() => downloadPDF(session)} className='px-6 py-2 bg-slate-900 text-white rounded font-bold'>Download PDF</button>
+                    </div>
                 </div>
             </div>
         </div>
