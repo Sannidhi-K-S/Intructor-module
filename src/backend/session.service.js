@@ -50,22 +50,22 @@ export const getDashboardData = async () => {
         },
       },
       include: {
-        lessonPlan: {
+        lessonplan: {
           include: {
-            objectives: true,
-            exercises: true,
+            lessonobjective: true,
+            exercise: true,
           },
         },
       },
     });
 
     // Fetch all training data for these sessions to check for debriefs
-    const trainingDataRecords = await prisma.trainingData.findMany({
+    const trainingDataRecords = await prisma.trainingdata.findMany({
       where: {
         session_id: { in: sessions.map(s => s.id) }
       },
       include: {
-        exercises: true
+        sessionexercise: true
       }
     });
 
@@ -89,14 +89,14 @@ export const getDashboardData = async () => {
         resourceUsed: getResource(s),
         debriefSummary: trainingData?.debrief_summary || null,
 
-        lessonPlan: s.lessonPlan
+        lessonPlan: s.lessonplan
           ? {
-              topic: s.lessonPlan.topic,
-              objectives: s.lessonPlan.objectives.map((o) => o.text),
-              instructorNotes: s.lessonPlan.instructorNotes,
-              expectedOutcome: s.lessonPlan.expectedOutcome,
-              exercises: s.lessonPlan.exercises.map((ex) => {
-                const saved = trainingData?.exercises?.find(se => se.exercise_id === ex.id || se.exercise_name === ex.name);
+              topic: s.lessonplan.topic,
+              objectives: s.lessonplan.lessonobjective.map((o) => o.text),
+              instructorNotes: s.lessonplan.instructorNotes,
+              expectedOutcome: s.lessonplan.expectedOutcome,
+              exercises: s.lessonplan.exercise.map((ex) => {
+                const saved = trainingData?.sessionexercise?.find(se => se.exercise_id === ex.id || se.exercise_name === ex.name);
                 return {
                   id: ex.id,
                   name: ex.name,
@@ -155,7 +155,7 @@ export const saveSessionScores = async (sessionId, traineeId, exercises, overall
         where: { training_id: record.id }
       });
     } else {
-      record = await prisma.trainingData.create({
+      record = await prisma.trainingdata.create({
         data: {
           session_id: Number(sessionId),
           traineeId: realTraineeId,
@@ -238,12 +238,12 @@ export const upsertExerciseDetail = async (sessionId, exerciseId, data) => {
     const sessionRecord = await prisma.session.findUnique({ where: { id: Number(sessionId) } });
     if (!sessionRecord) throw new Error("Session not found");
 
-    let trainingRecord = await prisma.trainingData.findUnique({
+    let trainingRecord = await prisma.trainingdata.findUnique({
       where: { session_id: Number(sessionId) }
     });
 
     if (!trainingRecord) {
-      trainingRecord = await prisma.trainingData.create({
+      trainingRecord = await prisma.trainingdata.create({
         data: {
           session_id: Number(sessionId),
           traineeId: sessionRecord.student_id,
@@ -253,7 +253,7 @@ export const upsertExerciseDetail = async (sessionId, exerciseId, data) => {
       });
     }
 
-    const savedExercise = await prisma.sessionExercise.findFirst({
+    const savedExercise = await prisma.sessionexercise.findFirst({
       where: {
         training_id: trainingRecord.id,
         OR: [
@@ -279,12 +279,12 @@ export const upsertExerciseDetail = async (sessionId, exerciseId, data) => {
 
 
     if (savedExercise) {
-      return await prisma.sessionExercise.update({
+      return await prisma.sessionexercise.update({
         where: { id: savedExercise.id },
         data: exerciseInfo
       });
     } else {
-      return await prisma.sessionExercise.create({
+      return await prisma.sessionexercise.create({
         data: exerciseInfo
       });
     }

@@ -1,5 +1,4 @@
 import express from "express";
-import express from "express";
 import { fetchDashboard, fetchHistory, saveScores, getSessionReport, saveExerciseDetail, getAllExs, createSession, generateDebriefSummary, saveDebriefSummary, createReport, archiveToHistory, getReport, getTrainingDataBySession, getArchivedReportsController } from "./session.controller.js";
 
 const router = express.Router();

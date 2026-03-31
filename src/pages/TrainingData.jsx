@@ -56,11 +56,10 @@ const TrainingData = () => {
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  const [showDemoModal, setShowDemoModal] = useState(false);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const [traineeInfo] = useState({ name: "Trainee Name", id: "TRN-8829" });
+  const [showLessonPlan, setShowLessonPlan] = useState(false);
 
-  const ACTIVE_SESSION_TYPE = activeSession?.type || "";
+  const ACTIVE_SESSION_TYPE = activeSession?.training_type || activeSession?.type || "";
   const IS_SUPPORTED_SESSION = ACTIVE_SESSION_TYPE.toLowerCase().includes("flight") || ACTIVE_SESSION_TYPE.toLowerCase().includes("simulator");
 
   const current = exercises.length > 0 ? exercises[activeExercise] : null;
@@ -69,47 +68,49 @@ const TrainingData = () => {
   /* ================= AUTO-SELECT ONGOING SESSION ================= */
   useEffect(() => {
     const checkSessions = async () => {
-      if (activeSession) return;
-
-      if (sessions.length === 0) {
-        await loadDashboard();
-        // If still 0 after loading, show the modal
+      // 1. Try to restore from localStorage if current store is empty
+      const savedId = localStorage.getItem("last_active_session_id");
+      
+      if (!activeSession) {
+        if (sessions.length === 0) await loadDashboard();
         const currentSessions = useAppStore.getState().sessions;
-        if (currentSessions.length === 0) {
-          setShowDemoModal(true);
+        
+        // 2. Prioritize the saved ID from refresh
+        const restored = savedId ? currentSessions.find(s => String(s.id) === savedId) : null;
+        if (restored) {
+          setActiveSession(restored);
         } else {
-          const ongoing = currentSessions.find(s => s.status === "ongoing");
+          // 3. Fallback to first ongoing
+          const ongoing = currentSessions.find(s => s.status === "ongoing" || s.isActive);
           if (ongoing) setActiveSession(ongoing);
-          else setShowDemoModal(true);
         }
-      } else {
-        const ongoing = sessions.find(s => s.status === "ongoing");
-        if (ongoing) {
-          setActiveSession(ongoing);
-        } else {
-          setShowDemoModal(true);
-        }
+      } else if (activeSession.id) {
+        // 4. Update localStorage whenever activeSession changes
+        localStorage.setItem("last_active_session_id", String(activeSession.id));
       }
     };
-
     checkSessions();
   }, [activeSession, sessions.length, loadDashboard, setActiveSession]);
 
   /* ================= INIT DATA ================= */
   useEffect(() => {
-    if (showDemoModal && !isDemoMode) return;
-
     const initializePage = async () => {
+      if (!activeSession) return;
       setLoading(true);
       try {
         let exData = [];
-        // Priority 1: Data from the store (real session)
+        // Check if session has exercises in the lesson plan
         if (activeSession?.lessonPlan?.exercises?.length > 0) {
           exData = activeSession.lessonPlan.exercises;
-        } else if (!activeSession) {
-          // Priority 2: Templates from backend
-          const exRes = await fetch("http://localhost:5000/api/sessions/exercises");
-          if (exRes.ok) exData = await exRes.json();
+        } else if (activeSession?.lessonplan?.exercise?.length > 0) {
+           exData = activeSession.lessonplan.exercise;
+        } else {
+          // Fetch existing training data if it exists
+          const res = await fetch(`http://localhost:5000/api/sessions/training-data/session/${activeSession.id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.sessionexercise) exData = data.sessionexercise;
+          }
         }
 
         if (!exData || exData.length === 0) {
@@ -117,26 +118,15 @@ const TrainingData = () => {
         }
 
         setExercises(exData.map(ex => ({
-          id: ex.id,
+          id: ex.id || ex.exercise_id,
           name: ex.name || ex.exercise_name,
           type: ex.type || ex.exercise_type,
           score: ex.score || 0,
-          canvasData: ex.canvasData || null,
+          canvasData: ex.canvas_data ? JSON.parse(ex.canvas_data) : (ex.canvasData || null),
           notes: ex.notes || ""
         })));
 
-        if (isDemoMode) {
-          let demoId = localStorage.getItem("demo_session_id");
-           if (!demoId) {
-              const res = await fetch("http://localhost:5000/api/sessions/create-session", { method: "POST" });
-              const data = await res.json();
-              demoId = data?.session_id;
-              if (demoId) localStorage.setItem("demo_session_id", demoId);
-           }
-          if (demoId) setSessionId(Number(demoId));
-        } else if (activeSession?.id) {
-          setSessionId(Number(activeSession.id));
-        }
+        setSessionId(Number(activeSession.id));
       } catch (err) {
         setExercises(fallbackExercises);
         console.error("Initialization error:", err);
@@ -146,7 +136,7 @@ const TrainingData = () => {
     };
 
     initializePage();
-  }, [isDemoMode, showDemoModal, activeSession]);
+  }, [activeSession]);
 
   useEffect(() => {
     latestExercisesRef.current = exercises;
@@ -197,15 +187,6 @@ const TrainingData = () => {
     });
   };
 
-  const updateNotes = (val) => {
-    setExercises(prev => {
-      const updated = [...prev];
-      updated[activeExercise].notes = val;
-      updateActiveSessionExercise(updated[activeExercise].id, { notes: val });
-      return updated;
-    });
-  };
-
 
   /* ================= AUTO-SAVE CANVAS ================= */
   useEffect(() => {
@@ -245,32 +226,25 @@ const TrainingData = () => {
   };
 
   /* ================= UI RENDERING ================= */
-  if (showDemoModal && !isDemoMode) {
+  if (activeSession && !IS_SUPPORTED_SESSION) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
-        <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-md w-full">
-          <h2 className="text-2xl font-bold mb-4">No Active Session</h2>
-          <p className="text-slate-500 mb-6">Please select a session from the Dashboard or run a demo evaluation.</p>
-          <div className="flex gap-4 justify-center">
-            <button onClick={() => navigate("/")} className="btn-secondary px-6 py-2 rounded-lg border">Dashboard</button>
-            <button onClick={() => { setIsDemoMode(true); setShowDemoModal(false); }} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold">Run Demo</button>
-          </div>
+        <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-md w-full border-t-4 border-amber-500">
+          <h2 className="text-2xl font-bold mb-4">Training Canvas Disabled</h2>
+          <p className="text-slate-500 mb-6">Evaluations and canvas annotations are only available for <strong>Flight Training</strong> and <strong>Simulator</strong> sessions. This session is labeled as "{ACTIVE_SESSION_TYPE.replace("_", " ")}".</p>
+          <button onClick={() => navigate("/")} className="btn-secondary px-6 py-2 rounded-lg border w-full font-bold">Back to Dashboard</button>
         </div>
       </div>
     );
   }
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500">Loading Training Module...</div>;
-  }
-
-  if (activeSession && !IS_SUPPORTED_SESSION && !isDemoMode) {
+  if (!activeSession && !loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
         <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-md w-full border-t-4 border-amber-500">
-          <h2 className="text-2xl font-bold mb-4">No Active Training Classes Found</h2>
-          <p className="text-slate-500 mb-6">The module "{ACTIVE_SESSION_TYPE}" does not support evaluation / training canvas.</p>
-          <button onClick={() => navigate("/")} className="btn-secondary px-6 py-2 rounded-lg border w-full">Back to Dashboard</button>
+          <h2 className="text-2xl font-bold mb-4">No Active Session Found</h2>
+          <p className="text-slate-500 mb-6">Please select an ongoing session from your Dashboard to start training.</p>
+          <button onClick={() => navigate("/")} className="btn-secondary px-6 py-2 rounded-lg border w-full font-bold">Return to Dashboard</button>
         </div>
       </div>
     );
@@ -278,11 +252,6 @@ const TrainingData = () => {
 
   return (
     <div className="training-container container-app section-stack">
-      {isDemoMode && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[9999] bg-blue-600/90 backdrop-blur-sm text-white px-4 py-1 rounded-full shadow-lg animate-in font-bold text-xs border border-white/20">
-          🚀 Demo Mode
-        </div>
-      )}
 
       {/* HEADER */}
       <div className="training-header flex flex-col md:flex-row justify-between items-start gap-4">
@@ -298,7 +267,7 @@ const TrainingData = () => {
           <div className="training-meta mt-1 flex items-center gap-4">
             <span>SESSION ID: {activeSession?.id || (isDemoMode ? "DEMO-001" : "SESS-001")}</span>
             <span className="bg-blue-50 text-blue-700 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">
-              {isDemoMode ? "DEMO SESSION" : `${ACTIVE_SESSION_TYPE} SESSION`}
+              {ACTIVE_SESSION_TYPE} SESSION
             </span>
           </div>
         </div>
@@ -336,7 +305,10 @@ const TrainingData = () => {
           </div>
         )}
 
-        <div className={`${sidebarOpen ? "md:col-span-8 lg:col-span-9" : "md:col-span-12"} main-card bg-white rounded-xl shadow-lg border border-slate-100 p-4 md:p-6`}>
+        <div 
+          key={activeExercise}
+          className={`${sidebarOpen ? "md:col-span-8 lg:col-span-9" : "md:col-span-12"} main-card bg-white rounded-xl shadow-lg border border-slate-100 p-4 md:p-6 animate-in slide-in-from-right-4 fade-in duration-500`}
+        >
           <h2 className="text-xl font-bold mb-4 text-slate-800">{current?.name}</h2>
 
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -357,7 +329,7 @@ const TrainingData = () => {
             <div className="flex items-center gap-4">
               <button
                 className="bg-slate-100 text-slate-700 px-6 py-2 rounded-lg font-bold hover:bg-slate-200 transition-all border border-slate-200 shadow-sm"
-                onClick={() => navigate("/lesson-plan")}
+                onClick={() => setShowLessonPlan(true)}
               >
                 Lesson Plan
               </button>
@@ -379,16 +351,6 @@ const TrainingData = () => {
             canvasData={current?.canvasData}
             setCanvasData={updateCanvasData}
           />
-
-          <div className="mt-6">
-            <label className="text-sm font-bold text-slate-700 mb-2 block uppercase tracking-tight">Trainee Behavior & Instructor Remarks</label>
-            <textarea
-              className="w-full p-4 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm h-24 resize-none"
-              placeholder="e.g. Trainee showed hesitation during GPS input, corrected after verbal prompt..."
-              value={current?.notes || ""}
-              onChange={(e) => updateNotes(e.target.value)}
-            />
-          </div>
 
 
           <div className="flex justify-between items-center mt-6">
@@ -418,6 +380,99 @@ const TrainingData = () => {
           </div>
         </div>
       </div>
+      {/* LESSON PLAN MODAL */}
+      {showLessonPlan && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowLessonPlan(false)}></div>
+          <div className="relative bg-white w-full max-w-2xl max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-xl font-bold text-slate-800">Review Lesson Plan</h3>
+              <button 
+                onClick={() => setShowLessonPlan(false)}
+                className="w-10 h-10 rounded-full hover:bg-slate-200 flex items-center justify-center transition-all text-slate-500"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="p-6 overflow-y-auto space-y-8">
+              <section>
+                <label className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-2 block">Primary Topic</label>
+                <p className="text-2xl font-bold text-slate-900 leading-tight">{activeSession?.lessonplan?.topic || activeSession?.lessonPlan?.topic || "Fundamentals of Flight"}</p>
+              </section>
+
+              <section className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Expected Outcome</label>
+                  <p className="text-sm text-slate-600 leading-relaxed italic bg-slate-50 p-4 rounded-xl border border-slate-100 italic">
+                    "{activeSession?.lessonplan?.expectedOutcome || activeSession?.lessonPlan?.expectedOutcome || "Trainee should demonstrate situational awareness and precise control inputs during all phases of the exercise."}"
+                  </p>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Instructor Notes</label>
+                  <p className="text-sm text-slate-600 leading-relaxed">
+                    {activeSession?.lessonplan?.instructorNotes || activeSession?.lessonPlan?.instructorNotes || "No specific briefing notes provided for this session."}
+                  </p>
+                </div>
+              </section>
+
+              <section>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block">Defined Objectives</label>
+                    <div className="space-y-3">
+                      {(activeSession?.lessonplan?.lessonobjective || activeSession?.lessonPlan?.objectives || []).length > 0 ? (
+                        (activeSession?.lessonplan?.lessonobjective || activeSession?.lessonPlan?.objectives).map((obj, i) => (
+                          <div key={i} className="flex items-start gap-4 p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                            <span className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">{i + 1}</span>
+                            <p className="text-sm text-slate-700 font-medium">{obj.text || obj}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-slate-400 text-sm italic py-4">No specific objectives listed.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 block">Curriculum Exercises</label>
+                    <div className="space-y-3">
+                      {(activeSession?.lessonplan?.exercise || activeSession?.lessonPlan?.exercises || []).length > 0 ? (
+                        (activeSession?.lessonplan?.exercise || activeSession?.lessonPlan?.exercises).map((ex, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                            <div className="flex items-center gap-3">
+                              <span className="w-6 h-6 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-black">{i + 1}</span>
+                              <div>
+                                <p className="text-sm font-bold text-slate-800">{ex.name}</p>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-tighter">{ex.type || "Evaluation Task"}</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 bg-white px-2 py-1 rounded border border-slate-100">NOT STARTED</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-slate-400 text-sm italic py-4">No exercises defined for this plan.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-6 border-t border-slate-100 bg-slate-50/30 flex justify-end">
+              <button 
+                onClick={() => setShowLessonPlan(false)}
+                className="bg-blue-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
+              >
+                Continue Training
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -319,7 +319,7 @@ const CanvasBoard = ({
         const pointer = opt.scenePoint || (canvas.getPointer ? canvas.getPointer(opt.e) : { x: opt.e.offsetX, y: opt.e.offsetY });
 
         // iPad Notes Style: Snap to left margin but keep the Y coordinate of the click
-        const leftMargin = isMobile ? 40 : 120;
+        const leftMargin = isMobile ? 140 : 200;
 
         const text = new IText("Start typing...", {
           left: leftMargin,

@@ -1,0 +1,58 @@
+﻿node : file:///C:/Users/MADHU
+/Downloads/Intructor-module-m
+ain/Instructor-module/src/bac
+kend/session.routes.js:2
+At line:1 char:1
++ node src/backend/server.js 
+2>&1 | Out-File -FilePath 
+tmp_err.txt -Enc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~
+    + CategoryInfo           
+   : NotSpecified: (file://  
+  /C:/User...ion.routes.js   
+ :2:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+import { fetchDashboard, 
+fetchHistory, saveScores, 
+getSessionReport, 
+saveExerciseDetail, 
+getAllExs, createSession, 
+generateDebriefSummary, 
+saveDebriefSummary, 
+createReport, 
+archiveToHistory, getReport, 
+getTrainingDataBySession, 
+getArchivedReportsController 
+} from 
+"./session.controller.js";
+                             
+                             
+                             
+                             
+                             
+                            
+^^^^^^^^^^^^^^^^
+SyntaxError: The requested 
+module 
+'./session.controller.js' 
+does not provide an export 
+named 'archiveToHistory'
+    at 
+ModuleJob._instantiate (node:
+internal/modules/esm/module_j
+ob:228:21)
+    at async ModuleJob.run (n
+ode:internal/modules/esm/modu
+le_job:337:5)
+    at async onImport.tracePr
+omise.__proto__ (node:interna
+l/modules/esm/loader:665:26)
+    at async asyncRunEntryPoi
+ntWithESMLoader (node:interna
+l/modules/run_main:117:5)
+
+Node.js v22.20.0

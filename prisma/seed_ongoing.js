@@ -3,100 +3,124 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Seeding base entities...");
-
-  // 1. Ensure an Instructor exists
-  let instructor = await prisma.instructor.findFirst();
-  if (!instructor) {
-    instructor = await prisma.instructor.create({
-      data: {
-        instructorId: "INST-001",
-        name: "Capt. Arjan Maneuver",
-        email: "arjan@fsms.aero",
-        designation: "Senior Flight Instructor",
-        status: "active",
-      }
-    });
-    console.log(`Created Instructor: ${instructor.name}`);
-  } else {
-    console.log(`Using existing Instructor: ${instructor.name}`);
+  const sessionCount = await prisma.session.count();
+  
+  if (sessionCount > 0) {
+    console.log("DATABASE ALREADY SEEDED, SKIPPING...");
+    return;
   }
 
-  // 2. Ensure a Trainee exists
-  let trainee = await prisma.trainee.findFirst();
-  if (!trainee) {
-    trainee = await prisma.trainee.create({
-      data: {
-        traineeId: "TRN-900",
-        name: "Student Alpha",
-        email: "alpha@fsms.aero",
-        enrollmentDate: new Date(),
-        course: "PPL",
-        licenseType: "Student Pilot",
-        status: "active",
-      }
-    });
-    console.log(`Created Trainee: ${trainee.name}`);
-  } else {
-    console.log(`Using existing Trainee: ${trainee.name}`);
-  }
+  console.log("SEEDING LIVE ONGOING SESSIONS...");
 
-  // 3. Create a comprehensive Lesson Plan
-  const lessonPlan = await prisma.lessonPlan.create({
+  // 1. Core Instructor
+  const instructor = await prisma.instructor.create({
     data: {
-      topic: "Cross-Country Navigation Live Test",
-      instructorNotes: "Focus on dead reckoning, pilotage, and diversion tactics. Ensure student logs times accurately.",
-      expectedOutcome: "Student successfully navigates a 50nm leg without GPS assistance, maintaining +/- 100ft altitude.",
-      objectives: {
-        create: [
-          { text: "Complete pre-flight navigation log accurately" },
-          { text: "Execute planned cross-country leg via pilotage" },
-          { text: "Perform an inflight diversion to an alternate airport" }
-        ]
-      },
-      exercises: {
-        create: [
-          { name: "Dead Reckoning Implementation", type: "Flight Maneuver" },
-          { name: "Inflight Diversion Calculation", type: "Oral/Knowledge" },
-          { name: "Altitude and Heading Maintenance", type: "Flight Maneuver" }
-        ]
-      }
-    }
+      name: "Capt. Arjan Moore",
+      email: "arjan.moore@flightacademy.com",
+      designation: "Senior Flight Instructor",
+      status: "ACTIVE",
+      updated_at: new Date(),
+    },
   });
 
-  console.log(`Created Lesson Plan: ${lessonPlan.topic}`);
-
-  // 4. Create an ONGOING session (Started 10 mins ago, Ends in 50 mins)
-  const now = new Date();
-  const startTime = new Date(now.getTime() - 10 * 60000); // 10 minutes ago
-  const endTime = new Date(now.getTime() + 50 * 60000); // 50 minutes from now
-
-  const session = await prisma.session.create({
+  // 2. Core Trainee
+  const trainee = await prisma.trainee.create({
     data: {
-      session_title: "Cross-Country Navigation Live Test",
+      id: "TRN-9021",
+      traineeId: "TR-2024-001",
+      name: "Sarah Jenkins",
+      email: "sarah.j@student.com",
+      enrollmentDate: new Date(),
+      status: "ACTIVE",
+      updatedAt: new Date(),
+    },
+  });
+
+  // 3. Lesson Plans for each mode
+  const flightPlan = await prisma.lessonplan.create({
+    data: {
+      topic: "Advanced Instrument Flight",
+      exercise: {
+        create: [
+          { name: "ILS Approach Z Rwy 26", type: "Flight Maneuver" },
+          { name: "Engine Failure in IMC", type: "Emergency" },
+        ],
+      },
+    },
+  });
+
+  const simPlan = await prisma.lessonplan.create({
+    data: {
+      topic: "Multi-Engine Management",
+      exercise: {
+        create: [
+          { name: "Prop Feathering Logic", type: "Procedure" },
+          { name: "Single-Engine Takeoff", type: "Sim Maneuver" },
+        ],
+      },
+    },
+  });
+
+  const groundPlan = await prisma.lessonplan.create({
+    data: {
+      topic: "Aeronautical Meteorology",
+      exercise: {
+        create: [
+          { name: "Decoding METAR/TAF", type: "Theoretical" },
+          { name: "Frontal Systems Analysis", type: "Theory" },
+        ],
+      },
+    },
+  });
+
+  const now = new Date();
+  const hourAgo = new Date(now.getTime() - 3600000);
+  const hourLater = new Date(now.getTime() + 7200000); // 2 hours from now
+
+  // 4a. Flight Training (Ongoing Now)
+  await prisma.session.create({
+    data: {
+      session_title: "Flight: Advanced Instruments",
       instructor_id: instructor.id,
       student_id: trainee.id,
       training_type: "Flight_Training",
       aircraft_id: 172,
-      lesson_plan_id: lessonPlan.id,
-      start_time: startTime,
-      end_time: endTime,
-    }
+      lesson_plan_id: flightPlan.id,
+      start_time: hourAgo,
+      end_time: hourLater,
+    },
   });
 
-  console.log(`\n===========================================`);
-  console.log(`✅ SUCCESS! Created ONGOING Session ID: ${session.id}`);
-  console.log(`Started: ${startTime.toLocaleTimeString()}`);
-  console.log(`Ends: ${endTime.toLocaleTimeString()}`);
-  console.log(`This session will appear as "LIVE/ONGOING" right now!`);
-  console.log(`===========================================\n`);
+  // 4b. Simulator (Ongoing Now)
+  await prisma.session.create({
+    data: {
+      session_title: "Sim: Multi-Engine Drills",
+      instructor_id: instructor.id,
+      student_id: trainee.id,
+      training_type: "Simulator",
+      simulator_id: 1,
+      lesson_plan_id: simPlan.id,
+      start_time: hourAgo,
+      end_time: hourLater,
+    },
+  });
+
+  // 4c. Ground School (Ongoing Now)
+  await prisma.session.create({
+    data: {
+      session_title: "Ground: Weather Theory",
+      instructor_id: instructor.id,
+      student_id: trainee.id,
+      training_type: "Ground_School",
+      lesson_plan_id: groundPlan.id,
+      start_time: hourAgo,
+      end_time: hourLater,
+    },
+  });
+
+  console.log("SEEDING COMPLETE. DATA PREPARED.");
 }
 
 main()
-  .catch((e) => {
-    console.error("Seeding failed:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); });

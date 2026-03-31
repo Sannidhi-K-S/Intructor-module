@@ -1,5 +1,8 @@
 import { getDashboardData, saveSessionScores, fetchReportData, upsertExerciseDetail, getAllExercises } from "./session.service.js";
 import { getHistorySessions } from "./history.service.js";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 export const fetchDashboard = async (req, res) => {
   try {
@@ -35,8 +38,6 @@ export const createSession = async (req, res) => {
   }
 };
 
-
-
 export const getAllExs = async (req, res) => {
   try {
     const data = await getAllExercises();
@@ -46,7 +47,6 @@ export const getAllExs = async (req, res) => {
     res.status(500).json({ error: "Failed to load exercises" });
   }
 };
-
 
 export const fetchHistory = async (req, res) => {
   try {
@@ -89,4 +89,13 @@ export const getSessionReport = async (req, res) => {
     console.error("Get Report Error:", err);
     res.status(500).json({ error: "Failed to get report" });
   }
-};
+};
+
+// Stubs for missing functions to prevent backend crash
+export const generateDebriefSummary = async (req, res) => res.json([]);
+export const saveDebriefSummary = async (req, res) => res.json({ success: true });
+export const createReport = async (req, res) => res.json({ success: true });
+export const archiveToHistory = async (req, res) => res.json({ success: true });
+export const getReport = async (req, res) => res.json({});
+export const getTrainingDataBySession = async (req, res) => res.json({});
+export const getArchivedReportsController = async (req, res) => res.json([]);
