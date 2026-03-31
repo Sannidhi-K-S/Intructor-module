@@ -275,7 +275,7 @@ const TrainingData = () => {
       )}
 
       {/* HEADER */}
-      <div className="training-header flex justify-between items-start">
+      <div className="training-header flex flex-col md:flex-row justify-between items-start gap-4">
         <div>
           <button onClick={() => navigate(-1)} className="back-btn flex items-center gap-1 mb-3 text-slate-500 hover:text-blue-600 transition-colors">
             <HiOutlineChevronLeft /> Back
@@ -293,7 +293,7 @@ const TrainingData = () => {
           </div>
         </div>
 
-        <div className="text-right flex flex-col items-end">
+        <div className="text-left md:text-right flex flex-col items-start md:items-end">
           <h2 className="text-2xl font-black text-slate-900 leading-tight">
             {activeSession?.trainee || traineeInfo.name}
           </h2>
@@ -311,9 +311,9 @@ const TrainingData = () => {
         </button>
       </div>
 
-      <div className="grid lg:grid-cols-12 gap-6 mt-4">
+      <div className="grid md:grid-cols-12 gap-6 mt-4">
         {sidebarOpen && (
-          <div className="lg:col-span-3 sidebar animate-in fade-in slide-in-from-left-4 h-fit border border-slate-200 rounded-xl bg-white shadow-sm">
+          <div className="md:col-span-4 lg:col-span-3 sidebar animate-in h-fit border border-slate-200 rounded-xl bg-white shadow-sm overflow-y-auto max-h-[60vh]">
             {exercises.map((ex, i) => (
               <button
                 key={ex.id}
@@ -326,10 +326,10 @@ const TrainingData = () => {
           </div>
         )}
 
-        <div className={`${sidebarOpen ? "lg:col-span-9" : "lg:col-span-12"} main-card bg-white rounded-xl shadow-lg border border-slate-100 p-6`}>
+        <div className={`${sidebarOpen ? "md:col-span-8 lg:col-span-9" : "md:col-span-12"} main-card bg-white rounded-xl shadow-lg border border-slate-100 p-4 md:p-6`}>
           <h2 className="text-xl font-bold mb-4 text-slate-800">{current?.name}</h2>
 
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
             <div className="score-section">
               <div className="flex gap-2">
                 {[1, 2, 3, 4, 5].map((s) => (
@@ -371,7 +371,7 @@ const TrainingData = () => {
           />
 
 
-          <div className="flex justify-between items-center mt-6">
+          <div className="flex gap-4 items-center mt-6">
             <button
               onClick={() => { if (activeExercise > 0) handleExerciseChange(activeExercise - 1); }}
               disabled={activeExercise === 0}

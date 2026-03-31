@@ -44,6 +44,13 @@ const CanvasBoard = ({
   const [size, setSize] = useState(4);
   const [selectedText, setSelectedText] = useState(null);
   const [textBarPos, setTextBarPos] = useState({ top: 0, left: 0 });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const historyRef = React.useRef([]);
   const historyIndexRef = React.useRef(-1);
@@ -303,7 +310,7 @@ const CanvasBoard = ({
         const pointer = opt.scenePoint || (canvas.getPointer ? canvas.getPointer(opt.e) : { x: opt.e.offsetX, y: opt.e.offsetY });
 
         // iPad Notes Style: Snap to left margin but keep the Y coordinate of the click
-        const leftMargin = 120;
+        const leftMargin = isMobile ? 40 : 120;
 
         const text = new IText("Start typing...", {
           left: leftMargin,
@@ -375,41 +382,41 @@ const CanvasBoard = ({
 
   return (
     <div className="relative w-full border border-slate-200 rounded-xl overflow-hidden bg-white">
-      <div className="toolbox absolute top-4 left-4 z-[999]">
-        <div className="flex items-center gap-2 p-1.5 rounded-full bg-[#8b95a7]/90 backdrop-blur-md shadow-2xl border border-white/20 transition-all duration-300">
+      <div className="toolbox absolute top-4 left-4 z-[40]">
+        <div className="flex items-center gap-1.5 md:gap-2 p-1 md:p-1.5 rounded-full bg-[#8b95a7]/90 backdrop-blur-md shadow-2xl border border-white/20 transition-all duration-300">
           <button
             onClick={(e) => { e.stopPropagation(); setToolOpen(!toolOpen); }}
-            className={`w-14 h-14 rounded-full flex items-center justify-center text-white transition-all ${toolOpen ? "bg-[#ef4444]" : "bg-[#1e2a44]"}`}
+            className={`w-11 h-11 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white transition-all ${toolOpen ? "bg-[#ef4444]" : "bg-[#1e2a44]"}`}
           >
             {toolOpen ? <X size={20} /> : <Pen size={22} />}
           </button>
           {toolOpen && (
-            <div className="flex items-center gap-4 px-3 tool-entering">
-              <div className="flex items-center gap-2 border-r border-white/20 pr-4">
+            <div className="flex items-center gap-2 md:gap-4 px-2 md:px-3 tool-entering">
+              <div className="flex items-center gap-1 md:gap-2 border-r border-white/20 pr-2 md:pr-4">
                 {tools.map(t => (
                   <button
                     key={t}
                     onClick={(e) => { e.stopPropagation(); setActiveTool(t); }}
-                    className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${activeTool === t ? "bg-[#1e2a44] text-white" : "text-white hover:bg-white/10"}`}
+                    className={`w-9 h-9 md:w-11 md:h-11 rounded-full flex items-center justify-center transition-all ${activeTool === t ? "bg-[#1e2a44] text-white" : "text-white hover:bg-white/10"}`}
                   >
-                    {t === "pen" && <Pen size={20} />}
-                    {t === "text" && <Type size={20} />}
-                    {t === "eraser" && <Eraser size={20} />}
-                    {t === "select" && <MousePointer2 size={20} />}
-                    {t === "pan" && <Hand size={20} />}
-                    {t === "highlight" && <Highlighter size={20} />}
+                    {t === "pen" && <Pen size={isMobile ? 16 : 20} />}
+                    {t === "text" && <Type size={isMobile ? 16 : 20} />}
+                    {t === "eraser" && <Eraser size={isMobile ? 16 : 20} />}
+                    {t === "select" && <MousePointer2 size={isMobile ? 16 : 20} />}
+                    {t === "pan" && <Hand size={isMobile ? 16 : 20} />}
+                    {t === "highlight" && <Highlighter size={isMobile ? 16 : 20} />}
                   </button>
                 ))}
               </div>
 
               {/* COLORS */}
               {(activeTool === "pen" || activeTool === "text") && (
-                <div className="flex items-center gap-2 border-r border-white/20 pr-4">
+                <div className="flex items-center gap-1.5 md:gap-2 border-r border-white/20 pr-2 md:pr-4">
                   {penColors.map(c => (
                     <button
                       key={c}
                       onClick={(e) => { e.stopPropagation(); setPenColor(c); }}
-                      className="w-6 h-6 rounded-full border border-white/40"
+                      className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-white/40"
                       style={{ background: c, transform: penColor === c ? 'scale(1.2)' : 'none' }}
                     />
                   ))}
@@ -417,12 +424,12 @@ const CanvasBoard = ({
               )}
 
               {activeTool === "highlight" && (
-                <div className="flex items-center gap-2 border-r border-white/20 pr-4">
+                <div className="flex items-center gap-1.5 md:gap-2 border-r border-white/20 pr-2 md:pr-4">
                   {highlightColors.map(c => (
                     <button
                       key={c}
                       onClick={(e) => { e.stopPropagation(); setHighlightColor(c); }}
-                      className="w-6 h-6 rounded-full border border-white/40"
+                      className="w-5 h-5 md:w-6 md:h-6 rounded-full border border-white/40"
                       style={{ background: c, transform: highlightColor === c ? 'scale(1.2)' : 'none' }}
                     />
                   ))}
