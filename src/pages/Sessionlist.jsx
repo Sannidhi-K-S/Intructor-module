@@ -27,8 +27,11 @@ const SessionList = () => {
       // ONLY live sessions go directly to the TrainingData grading panel
       navigate("/training");
     } else if (session.status === "completed") {
-      // Completed routing logic
-      navigate("/reports");
+      // Navigate to the specific training log for this session
+      navigate(`/logbook/${session.id}`);
+    } else if (session.status === "action_required") {
+      // Action required — view this session's training log
+      navigate(`/logbook/${session.id}`);
     } else {
       // Upcoming and all other sessions stay on Dashboard and reveal Prep details
       const el = document.getElementById("session-prep-area");
@@ -40,7 +43,8 @@ const SessionList = () => {
     if (filter === "all") return true;
     if (filter === "ongoing") return s.status === "ongoing";
     if (filter === "completed") return s.status === "completed";
-    if (filter === "pending") return s.status === "pending" || s.status === "upcoming";
+    if (filter === "action_required") return s.status === "action_required";
+    if (filter === "pending") return s.status === "pending";
     return true;
   });
 
@@ -57,7 +61,8 @@ const SessionList = () => {
             <option value="all">All Sessions</option>
             <option value="ongoing">Ongoing Only</option>
             <option value="completed">Completed Only</option>
-            <option value="pending">Upcoming Only</option>
+            <option value="action_required">Action Required</option>
+            <option value="pending">Pending Only</option>
           </select>
           <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded">
             {filteredSessions.length} sessions
@@ -84,7 +89,7 @@ const SessionList = () => {
                 const isActive = activeSession?.id === session.id;
                 const isCompleted = session.status === "completed";
                 const isOngoing = session.status === "ongoing";
-                const needsAction = isCompleted && !session.debriefSummary;
+                const needsAction = session.status === "action_required";
 
                 return (
                   <button
@@ -132,7 +137,7 @@ const SessionList = () => {
                             ? "bg-amber-100 text-amber-700 border border-amber-200"
                             : isCompleted
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                              : "bg-gray-100 text-gray-500 border border-gray-200"
+                              : "bg-blue-50 text-blue-700 border border-blue-200"
                           }`}
                       >
                         {isOngoing ? (
@@ -146,7 +151,7 @@ const SessionList = () => {
                             Review
                           </>
                         ) : (
-                          session.status
+                          session.status.replace("_", " ")
                         )}
                       </div>
                     </div>

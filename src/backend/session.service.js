@@ -16,10 +16,11 @@ function formatTime(date) {
 }
 
 // 🧠 Helper: calculate status
-function getStatus(session) {
+function getStatus(session, trainingData) {
   const now = new Date();
-  if (now < session.start_time) return "upcoming";
-  if (now > session.end_time) return "completed";
+  if (trainingData && trainingData.session_outcome === "completed") return "completed";
+  if (now > session.end_time) return "action_required";
+  if (now < session.start_time) return "pending";
   return "ongoing";
 }
 
@@ -81,9 +82,9 @@ export const getDashboardData = async () => {
         topic: s.session_title,
         startTime: formatTime(s.start_time),
         endTime: formatTime(s.end_time),
-        type: s.training_type === "Ground_School" ? "Class" : (s.training_type || "Class").replace("_", " "),
+        type: s.training_type === "Flight_Training" ? "Flight" : s.training_type === "Ground_School" ? "Class" : (s.training_type || "Class").replace("_", " ").replace(" Training", ""),
 
-        status: getStatus(s),
+        status: getStatus(s, trainingData),
 
         trainee: trainee?.name || "Unknown Trainee",
         resourceUsed: getResource(s),
@@ -140,18 +141,18 @@ export const saveSessionScores = async (sessionId, traineeId, exercises, overall
     const realTraineeId = traineeId || sessionRecord.student_id;
     const instructorId = sessionRecord.instructor_id;
 
-    let record = await prisma.trainingData.findFirst({
+    let record = await prisma.trainingdata.findFirst({
       where: { session_id: Number(sessionId) }
     });
 
     if (record) {
-      record = await prisma.trainingData.update({
+      record = await prisma.trainingdata.update({
         where: { id: record.id },
         data: {
           debrief_summary: overallNotes || record.debrief_summary,
         }
       });
-      await prisma.sessionExercise.deleteMany({
+      await prisma.sessionexercise.deleteMany({
         where: { training_id: record.id }
       });
     } else {
@@ -176,7 +177,7 @@ export const saveSessionScores = async (sessionId, traineeId, exercises, overall
     }));
 
     if (exerciseData.length > 0) {
-      await prisma.sessionExercise.createMany({ data: exerciseData });
+      await prisma.sessionexercise.createMany({ data: exerciseData });
     }
 
     return record;
@@ -202,12 +203,12 @@ export const fetchReportData = async (sessionId) => {
     });
 
     // Formatting based on ReportsPage needs
-    const perf = await prisma.trainingData.findFirst({
+    const perf = await prisma.trainingdata.findFirst({
       where: { session_id: Number(sessionId) },
-      include: { exercises: true }
+      include: { sessionexercise: true }
     });
 
-    const averageScore = perf?.exercises?.length ? perf.exercises.reduce((acc, curr) => acc + curr.score, 0) / perf.exercises.length : 0;
+    const averageScore = perf?.sessionexercise?.length ? perf.sessionexercise.reduce((acc, curr) => acc + curr.score, 0) / perf.sessionexercise.length : 0;
 
     return {
       id: session.id,

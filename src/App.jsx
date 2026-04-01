@@ -4,10 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import History from "./pages/History";
 import TrainingData from "./pages/TrainingData";
 
-import ReportsPage from "./pages/ReportsPage";
-import Reports from "./pages/Reports";
 import TrainingLog from "./pages/TrainingLog";
-
 function App() {
   return (
     <BrowserRouter>
@@ -17,7 +14,6 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/training" element={<TrainingData />} />
           <Route path="/logbook/:sessionId?" element={<TrainingLog />} />
-          <Route path="/reports/:sessionId?" element={<Reports />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

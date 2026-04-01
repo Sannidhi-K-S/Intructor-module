@@ -70,11 +70,11 @@ const TrainingData = () => {
     const checkSessions = async () => {
       // 1. Try to restore from localStorage if current store is empty
       const savedId = localStorage.getItem("last_active_session_id");
-      
+
       if (!activeSession) {
         if (sessions.length === 0) await loadDashboard();
         const currentSessions = useAppStore.getState().sessions;
-        
+
         // 2. Prioritize the saved ID from refresh
         const restored = savedId ? currentSessions.find(s => String(s.id) === savedId) : null;
         if (restored) {
@@ -103,7 +103,7 @@ const TrainingData = () => {
         if (activeSession?.lessonPlan?.exercises?.length > 0) {
           exData = activeSession.lessonPlan.exercises;
         } else if (activeSession?.lessonplan?.exercise?.length > 0) {
-           exData = activeSession.lessonplan.exercise;
+          exData = activeSession.lessonplan.exercise;
         } else {
           // Fetch existing training data if it exists
           const res = await fetch(`http://localhost:5000/api/sessions/training-data/session/${activeSession.id}`);
@@ -222,7 +222,7 @@ const TrainingData = () => {
         body: JSON.stringify({ session_id: sessionId }),
       });
     }
-    navigate("/logbook");
+    navigate(`/logbook/${sessionId}`);
   };
 
   /* ================= UI RENDERING ================= */
@@ -250,6 +250,18 @@ const TrainingData = () => {
     );
   }
 
+  if (activeSession && activeSession.status !== 'ongoing' && !loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-xl text-center max-w-md w-full border-t-4 border-amber-500">
+          <h2 className="text-2xl font-bold mb-4">Session Not Live</h2>
+          <p className="text-slate-500 mb-6"> Training evaluations can only be recorded for live (ongoing) sessions.</p>
+          <button onClick={() => navigate("/")} className="btn-secondary px-6 py-2 rounded-lg border w-full font-bold text-slate-700 bg-slate-100 hover:bg-slate-200">Return to Dashboard</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="training-container container-app section-stack">
 
@@ -259,7 +271,7 @@ const TrainingData = () => {
           <button onClick={() => navigate(-1)} className="back-btn flex items-center gap-1 mb-3 text-slate-500 hover:text-blue-600 transition-colors">
             <HiOutlineChevronLeft /> Back
           </button>
-          
+
           <h1 className="training-title mb-1 font-black text-3xl">
             {activeSession?.session_title || activeSession?.topic || "Advanced Instrument Approaches"}
           </h1>
@@ -285,7 +297,7 @@ const TrainingData = () => {
       {/* TOOLBAR TOGGLE */}
       <div className="flex justify-between items-center mt-6">
         <button onClick={() => setSidebarOpen(!sidebarOpen)} className="sidebar-toggle flex items-center gap-2 hover:bg-slate-100 p-2 rounded transition-colors group">
-          <HiOutlineBars3 size={24} className="group-hover:text-blue-600" /> 
+          <HiOutlineBars3 size={24} className="group-hover:text-blue-600" />
           <span className="font-semibold text-sm">Exercises</span>
         </button>
       </div>
@@ -305,7 +317,7 @@ const TrainingData = () => {
           </div>
         )}
 
-        <div 
+        <div
           key={activeExercise}
           className={`${sidebarOpen ? "md:col-span-8 lg:col-span-9" : "md:col-span-12"} main-card bg-white rounded-xl shadow-lg border border-slate-100 p-4 md:p-6 animate-in slide-in-from-right-4 fade-in duration-500`}
         >
@@ -333,7 +345,7 @@ const TrainingData = () => {
               >
                 Lesson Plan
               </button>
-              
+
               <div className="flex flex-col items-center bg-blue-50 px-5 py-1.5 rounded-lg border border-blue-100">
                 <span className="text-[9px] uppercase tracking-widest text-blue-400 font-black">Final Grade</span>
                 <span className="text-xl font-black text-blue-600 leading-none">{finalGrade}%</span>
@@ -388,7 +400,7 @@ const TrainingData = () => {
             {/* Header */}
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="text-xl font-bold text-slate-800">Review Lesson Plan</h3>
-              <button 
+              <button
                 onClick={() => setShowLessonPlan(false)}
                 className="w-10 h-10 rounded-full hover:bg-slate-200 flex items-center justify-center transition-all text-slate-500"
               >
@@ -460,10 +472,10 @@ const TrainingData = () => {
                 </div>
               </section>
             </div>
-            
+
             {/* Footer */}
             <div className="p-6 border-t border-slate-100 bg-slate-50/30 flex justify-end">
-              <button 
+              <button
                 onClick={() => setShowLessonPlan(false)}
                 className="bg-blue-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all"
               >

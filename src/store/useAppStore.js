@@ -6,6 +6,7 @@ const useAppStore = create((set) => ({
   sessions: [],
   historySessions: [],
   activeSession: null,
+  loading: false,
 
   setActiveSession: (session) => set({ activeSession: session }),
 
@@ -27,16 +28,28 @@ const useAppStore = create((set) => ({
     };
   }),
 
+  updateSessionData: (sessionId, data) => set((state) => ({
+    sessions: state.sessions.map((s) => 
+      String(s.id) === String(sessionId) ? { ...s, ...data } : s
+    ),
+    activeSession: state.activeSession && String(state.activeSession.id) === String(sessionId)
+      ? { ...state.activeSession, ...data }
+      : state.activeSession,
+  })),
+
   loadDashboard: async () => {
+    set({ loading: true });
     try {
       const data = await fetchDashboard();
 
       set({
         user: data.user,
         sessions: data.sessions,
+        loading: false
       });
     } catch (err) {
       console.error("Dashboard error:", err);
+      set({ loading: false });
     }
   },
 

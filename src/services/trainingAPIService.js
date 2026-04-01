@@ -104,6 +104,19 @@ const TrainingAPIService = {
             console.error('Error fetching archived reports:', error);
             return [];
         }
+    },
+
+    /**
+     * Mark a session as complete
+     */
+    markSessionComplete: async (sessionId, additionalRemarks) => {
+        try {
+            const response = await axios.post(`${API_URL}/api/sessions/${sessionId}/complete`, { additionalRemarks });
+            return response.data;
+        } catch (error) {
+            console.error('Error marking session complete:', error);
+            throw error;
+        }
     }
 };
 

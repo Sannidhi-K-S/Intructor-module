@@ -1,5 +1,5 @@
 import express from "express";
-import { fetchDashboard, fetchHistory, saveScores, getSessionReport, saveExerciseDetail, getAllExs, createSession, generateDebriefSummary, saveDebriefSummary, createReport, archiveToHistory, getReport, getTrainingDataBySession, getArchivedReportsController } from "./session.controller.js";
+import { fetchDashboard, fetchHistory, saveScores, getSessionReport, saveExerciseDetail, getAllExs, createSession, generateDebriefSummary, saveDebriefSummary, createReport, archiveToHistory, getReport, getTrainingDataBySession, getArchivedReportsController, markSessionComplete } from "./session.controller.js";
 
 const router = express.Router();
 
@@ -17,5 +17,6 @@ router.post("/report/:trainingDataId", createReport);
 router.post("/archive/:reportId", archiveToHistory);
 router.get("/report/training/:trainingDataId", getReport);
 router.get("/training-data/session/:sessionId", getTrainingDataBySession);
+router.post("/:id/complete", markSessionComplete);
 
 export default router;

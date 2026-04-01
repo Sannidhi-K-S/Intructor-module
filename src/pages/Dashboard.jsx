@@ -22,7 +22,7 @@ const Dashboard = () => {
 
   // Extract and sort upcoming sessions for the "Upcoming Sessions" hero block
   const sortedUpcoming = sessions
-    .filter((s) => s.status === "upcoming")
+    .filter((s) => s.status === "pending")
     .sort((a, b) => {
       const parseTime = (t) => {
         const [time, modifier] = t.split(" ");
@@ -38,8 +38,8 @@ const Dashboard = () => {
 
   const pendingCounts = sessions.reduce((acc, s) => {
     if (s.status === "ongoing") acc.live++;
-    if (s.status === "completed" && !s.debriefSummary) acc.actionRequired++;
-    if (s.status === "upcoming" || s.status === "pending") acc.upcoming++;
+    if (s.status === "action_required") acc.actionRequired++;
+    if (s.status === "pending") acc.upcoming++;
     return acc;
   }, { live: 0, actionRequired: 0, upcoming: 0 });
 
@@ -80,11 +80,11 @@ const Dashboard = () => {
           {/* Upcoming Sessions Card */}
           <div className="flex-1 w-full min-w-[140px] bg-white border border-slate-200/60 rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-300 flex items-center justify-between group">
             <div className="flex flex-col">
-              <span className="text-[11px] font-bold text-purple-600 uppercase tracking-widest font-outfit mb-0.5">Upcoming</span>
+              <span className="text-[11px] font-bold text-blue-600 uppercase tracking-widest font-outfit mb-0.5">Pending</span>
               <span className="text-2xl font-extrabold text-slate-900 tracking-tight">{pendingCounts.upcoming}</span>
             </div>
-            <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Clock className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Clock className="w-4 h-4 md:w-5 md:h-5 text-blue-600" />
             </div>
           </div>
 

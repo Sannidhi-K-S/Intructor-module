@@ -13,9 +13,9 @@ export const getHistorySessions = async () => {
         const trainees = await prisma.trainee.findMany();
 
         // Note: TrainingData and SessionExercise need to be in the schema for this to work
-        const trainingData = await prisma.trainingData.findMany({
+        const trainingData = await prisma.trainingdata.findMany({
             include: {
-                exercises: true,
+                sessionexercise: true,
             },
         });
 
@@ -34,7 +34,7 @@ export const getHistorySessions = async () => {
                 return {
                     id: s.id,
                     topic: s.session_title,
-                    type: s.training_type === "Ground_School" ? "Class" : (s.training_type || "Class").replace("_", " "),
+                    type: s.training_type === "Flight_Training" ? "Flight" : s.training_type === "Ground_School" ? "Class" : (s.training_type || "Class").replace("_", " ").replace(" Training", ""),
                     trainee: trainee?.name || "Unknown Trainee",
 
                     resourceUsed: training?.resource_id || (s.aircraft_id ? `Aircraft ${s.aircraft_id}` : (s.simulator_id ? `Simulator ${s.simulator_id}` : "N/A")),
@@ -46,7 +46,7 @@ export const getHistorySessions = async () => {
                     additionalRemarks: training?.additional_remarks || "",
 
                     lessonPlan: {
-                        exercises: training?.exercises ? training.exercises.map(ex => ({
+                        exercises: training?.sessionexercise ? training.sessionexercise.map(ex => ({
                             id: ex.id,
                             name: ex.exercise_name,
                             type: ex.exercise_type,

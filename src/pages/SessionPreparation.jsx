@@ -20,27 +20,6 @@ const SessionPreparationPanel = ({ mode }) => {
   const { activeSession } = useAppStore();
   const navigate = useNavigate();
 
-  // 🧠 Check if it's too early to start (Disable button if now < startTime)
-  const isTooEarly = React.useMemo(() => {
-    if (!activeSession?.startTime || typeof activeSession.startTime !== 'string' || !activeSession.startTime.includes(" ")) return false;
-    
-    try {
-      const now = new Date();
-      const [time, modifier] = activeSession.startTime.split(" ");
-      let [hours, minutes] = time.split(":");
-      
-      if (hours === "12") hours = "00";
-      if (modifier === "PM") hours = (parseInt(hours, 10) % 12) + 12;
-      
-      const sessionStartTime = new Date();
-      sessionStartTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-      
-      return now < sessionStartTime;
-    } catch (e) {
-      console.error("Time parsing error:", e);
-      return false;
-    }
-  }, [activeSession]);
 
   if (!activeSession) {
     return (
@@ -84,14 +63,14 @@ const SessionPreparationPanel = ({ mode }) => {
             )}
             <button
               onClick={() => navigate("/training")}
-              disabled={isTooEarly}
+              disabled={activeSession.status !== 'ongoing'}
               className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition shadow-md ${
-                isTooEarly
+                activeSession.status !== 'ongoing'
                   ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                   : "bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg active:scale-95"
               }`}
             >
-              <Zap size={18} fill={isTooEarly ? "none" : "currentColor"} className={isTooEarly ? "text-gray-300" : ""} />
+              <Zap size={18} fill={activeSession.status !== 'ongoing' ? "none" : "currentColor"} className={activeSession.status !== 'ongoing' ? "text-gray-300" : ""} />
               {activeSession.status === 'ongoing' ? 'Continue Training' : 'Start Training'}
             </button>
           </div>
